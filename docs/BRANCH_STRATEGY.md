@@ -39,10 +39,25 @@ refactor/#31-n+1-fetch-join
 
 1. Issue 생성 (템플릿 사용) → 담당자 지정, 라벨 지정
 2. `develop`에서 `feature/#이슈번호-설명` 브랜치 생성
-3. 작업 → 커밋 → push
+3. 작업 → 커밋 → push (작업 중 `develop`이 앞서나갔다면 push/PR 갱신 전에 rebase, 아래 참고)
 4. `develop`으로 PR 생성 (PR 템플릿 사용, 이슈 연결)
 5. 팀원 중 1명 이상 리뷰 승인 후 merge (교차 리뷰 원칙 — 본인 도메인 PR은 다른 2명이 리뷰)
 6. 주차 종료 시 `develop` → `main` merge + 태그
+
+## 로컬 작업 중 rebase, PR 병합은 squash
+
+- **로컬 feature 브랜치**: `develop`이 먼저 나갔으면 merge commit 대신 rebase로 맞춘다.
+  ```
+  git fetch origin
+  git rebase origin/develop
+  git push --force-with-lease   # 이미 push한 적 있는 브랜치라면
+  ```
+  merge commit이 안 생겨서 PR diff와 리뷰가 깔끔해진다.
+- **PR 병합**: 브랜치 보호 규칙대로 Squash and merge를 사용한다. develop 히스토리에는 PR당
+  커밋 1개만 남지만, 원래의 세부 커밋은 merge된 PR의 Commits 탭에 그대로 남아있으니
+  필요하면 거기서 확인하면 된다.
+- **주의**: rebase는 본인 소유의 `feature/*` 브랜치에서만 한다. 팀원과 공유하는
+  `develop`/`main`은 절대 rebase하지 않는다.
 
 ## 커밋 메시지 컨벤션 (Conventional Commits)
 
