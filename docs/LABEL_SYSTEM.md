@@ -29,11 +29,15 @@
 ## 부착 규칙
 
 1. **개인 담당 이슈** → 도메인 라벨 + 타입 라벨을 최소 1개씩 함께 부착
-    - 예: `[선우] Redis Sorted Set 기반 대기열 구현` → `performance-seat`, `feature`
+    - 예: `[Feat] Redis Sorted Set 기반 대기열 구현` (담당자 신선우) → `performance-seat`, `feature`
 2. **팀 전체/조율성 이슈** (공통 이슈, 체크포인트, 회의 주도 등) → 도메인 라벨 없이 `team` 또는 `checkpoint`만 부착
-    - 예: `[공통] 팀 전원 로컬 실행 성공 확인` → `team`
+    - 예: `[Chore] 팀 전원 로컬 실행 성공 확인` (담당자 전원) → `team`
 3. **`db`처럼 애매한 라벨은 만들지 않는다** — 도메인 라벨만으로 이미 충분히 구분됨 (ERD 작업도 도메인 라벨 + `feature`로 표현)
 4. 라벨 체계를 바꾸게 되면 이 문서와 `automation/issues.yaml` 상단 주석을 함께 갱신한다.
+5. **도메인·담당자는 제목에 쓰지 않는다.** 이슈 제목은 `[Type] 설명` 형식만 쓰고(`Type` ∈
+   `Feat`/`Test`/`Perf`/`Refactor`/`Docs`/`Chore`, Title Case), 담당자·도메인은 `assignee`
+   필드와 도메인 라벨이 전담한다. `Type`이 어떤 타입 라벨로부터 파생되는지는
+   `.claude/commands/weekly-issues.md`의 우선순위 규칙을 따른다.
 
 ## 참고
 

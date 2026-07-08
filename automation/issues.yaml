@@ -24,33 +24,33 @@ weeks:
     phase: "phase-1-foundation"
     milestone: "Week 1 - 설계 & 세팅"
     issues:
-      - title: "[노주희] GitHub 레포 생성"
+      - title: "[Chore] GitHub 레포 생성"
         assignee: 노주희
         labels: [infra, team]
-      - title: "[노주희] 브랜치 전략 문서화"
+      - title: "[Docs] 브랜치 전략 문서화"
         assignee: 노주희
         labels: [infra, docs, team]
-      - title: "[노주희] Issue·PR 템플릿 작성"
+      - title: "[Chore] Issue·PR 템플릿 작성"
         assignee: 노주희
         labels: [infra, team]
-      - title: "[노주희] ERD 초안 작성 (전원 리뷰)"
+      - title: "[Feat] ERD 초안 작성 (전원 리뷰)"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[신선우] ERD 리뷰 (공연·좌석 관점)"
+      - title: "[Feat] ERD 리뷰 (공연·좌석 관점)"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] Spring Boot 단일 모듈 초기 세팅"
+      - title: "[Chore] Spring Boot 단일 모듈 초기 세팅"
         assignee: 신선우
         labels: [infra, team]
-      - title: "[조준형] ERD 리뷰 (유저 관점)"
+      - title: "[Feat] ERD 리뷰 (유저 관점)"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] Spring Security 구조 설계"
+      - title: "[Feat] Spring Security 구조 설계"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[공통] 트레이드오프 문서 폴더 생성"
+      - title: "[Docs] 트레이드오프 문서 폴더 생성"
         labels: [team, docs]
-      - title: "[공통] 팀 전원 로컬 실행 성공 확인 (1주차 체크포인트)"
+      - title: "[Chore] 팀 전원 로컬 실행 성공 확인 (1주차 체크포인트)"
         labels: [team, checkpoint]
 
   # ------------------------------------------------------------------
@@ -58,39 +58,39 @@ weeks:
     phase: "phase-1-foundation"
     milestone: "Week 2 - 도메인 CRUD"
     issues:
-      - title: "[노주희] 예매(Booking) 엔티티 구현"
+      - title: "[Feat] 예매(Booking) 엔티티 구현"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[노주희] 예매 생성·조회·취소 API"
+      - title: "[Feat] 예매 생성·조회·취소 API"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[신선우] 공연(Concert) 엔티티 구현"
+      - title: "[Feat] 공연(Concert) 엔티티 구현"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 공연 CRUD API"
+      - title: "[Feat] 공연 CRUD API"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 좌석(Seat) 엔티티 구현"
+      - title: "[Feat] 좌석(Seat) 엔티티 구현"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 좌석 상태(AVAILABLE·RESERVED) 설계"
+      - title: "[Feat] 좌석 상태(AVAILABLE·RESERVED) 설계"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[조준형] 유저(User) 엔티티 구현"
+      - title: "[Feat] 유저(User) 엔티티 구현"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] 회원가입 API"
+      - title: "[Feat] 회원가입 API"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] Spring Security + JWT 인증·인가 구현"
+      - title: "[Feat] Spring Security + JWT 인증·인가 구현"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] 기본 예외처리 응답 포맷 통일"
+      - title: "[Chore] 기본 예외처리 응답 포맷 통일"
         assignee: 조준형
         labels: [user-notification, infra]
-      - title: "[공통] 첫 PR 리뷰 교차 진행"
+      - title: "[Chore] 첫 PR 리뷰 교차 진행"
         labels: [team]
-      - title: "[공통] Issue → PR → merge 1사이클 완료 확인 (2주차 체크포인트)"
+      - title: "[Chore] Issue → PR → merge 1사이클 완료 확인 (2주차 체크포인트)"
         labels: [team, checkpoint]
 
   # ------------------------------------------------------------------
@@ -98,34 +98,34 @@ weeks:
     phase: "phase-1-foundation"
     milestone: "Week 3 - Redis 분산 락 + 대기열 기초"
     issues:
-      - title: "[노주희] Redis 환경 세팅 (Docker Compose)"
+      - title: "[Chore] Redis 환경 세팅 (Docker Compose)"
         assignee: 노주희
         labels: [infra, booking]
-      - title: "[노주희] Redisson 분산 락 구현"
+      - title: "[Feat] Redisson 분산 락 구현"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[노주희] 동시 예매 시나리오 테스트 (100명 동시)"
+      - title: "[Test] 동시 예매 시나리오 테스트 (100명 동시)"
         assignee: 노주희
         labels: [booking, test]
-      - title: "[노주희] ★ 분산 락 선택 이유 트레이드오프 문서화"
+      - title: "[Docs] ★ 분산 락 선택 이유 트레이드오프 문서화"
         assignee: 노주희
         labels: [booking, trade-off-doc]
-      - title: "[신선우] Redis Sorted Set 기반 대기열 구현"
+      - title: "[Feat] Redis Sorted Set 기반 대기열 구현"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 대기열 순번 발급·조회 API"
+      - title: "[Feat] 대기열 순번 발급·조회 API"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 락 TTL·재시도 전략 검토 및 리뷰"
+      - title: "[Chore] 락 TTL·재시도 전략 검토 및 리뷰"
         assignee: 신선우
         labels: [performance-seat, review]
-      - title: "[조준형] ★ JWT vs Session 트레이드오프 문서화"
+      - title: "[Docs] ★ JWT vs Session 트레이드오프 문서화"
         assignee: 조준형
         labels: [user-notification, trade-off-doc]
-      - title: "[조준형] 락 동작 확인용 통합 테스트 작성 지원"
+      - title: "[Test] 락 동작 확인용 통합 테스트 작성 지원"
         assignee: 조준형
         labels: [test, booking]
-      - title: "[조준형] Kafka 브로커 Docker 세팅 준비"
+      - title: "[Chore] Kafka 브로커 Docker 세팅 준비"
         assignee: 조준형
         labels: [infra, user-notification]
 
@@ -134,31 +134,31 @@ weeks:
     phase: "phase-1-foundation"
     milestone: "Week 4 - SSE + 캐싱 + 공연 오픈 스케줄러"
     issues:
-      - title: "[노주희] 예매 트랜잭션 고도화 (좌석 상태 확인 + RESERVED 변경 + 분산 락 통합)"
+      - title: "[Feat] 예매 트랜잭션 고도화 (좌석 상태 확인 + RESERVED 변경 + 분산 락 통합)"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[노주희] 캐시 vs DB 조회 응답속도 비교 메모 작성"
+      - title: "[Docs] 캐시 vs DB 조회 응답속도 비교 메모 작성"
         assignee: 노주희
         labels: [booking, docs]
-      - title: "[신선우] SSE 대기열 순번 실시간 푸시 구현"
+      - title: "[Feat] SSE 대기열 순번 실시간 푸시 구현"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] ★ WebSocket vs SSE 트레이드오프 문서화"
+      - title: "[Docs] ★ WebSocket vs SSE 트레이드오프 문서화"
         assignee: 신선우
         labels: [performance-seat, trade-off-doc]
-      - title: "[신선우] Cache-Aside 인기 공연 캐싱 구현"
+      - title: "[Feat] Cache-Aside 인기 공연 캐싱 구현"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 캐시 TTL·무효화 전략 결정"
+      - title: "[Feat] 캐시 TTL·무효화 전략 결정"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[조준형] 공통 예외처리·응답 포맷 통일 마무리"
+      - title: "[Chore] 공통 예외처리·응답 포맷 통일 마무리"
         assignee: 조준형
         labels: [user-notification, infra]
-      - title: "[조준형] Kafka 브로커 Docker 세팅 완료"
+      - title: "[Chore] Kafka 브로커 Docker 세팅 완료"
         assignee: 조준형
         labels: [infra, user-notification]
-      - title: "[공통] Redis 기능 3종 동작 확인 (분산 락 / 대기열 / 캐싱) - 4주차 체크포인트"
+      - title: "[Chore] Redis 기능 3종 동작 확인 (분산 락 / 대기열 / 캐싱) - 4주차 체크포인트"
         labels: [team, checkpoint]
 
   # ------------------------------------------------------------------
@@ -166,31 +166,31 @@ weeks:
     phase: "phase-2-search-event"
     milestone: "Week 5 - QueryDSL + 검색 + 공연 오픈 스케줄러"
     issues:
-      - title: "[노주희] 예매 복합 조건 QueryDSL 쿼리 작성"
+      - title: "[Feat] 예매 복합 조건 QueryDSL 쿼리 작성"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[노주희] 실행계획 EXPLAIN 분석 지원"
+      - title: "[Perf] 실행계획 EXPLAIN 분석 지원"
         assignee: 노주희
         labels: [booking, perf]
-      - title: "[신선우] QueryDSL 날짜·장르·지역 복합 쿼리 구현"
+      - title: "[Feat] QueryDSL 날짜·장르·지역 복합 쿼리 구현"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] 실행계획 EXPLAIN 분석"
+      - title: "[Perf] 실행계획 EXPLAIN 분석"
         assignee: 신선우
         labels: [performance-seat, perf]
-      - title: "[신선우] ★ 인덱스 설계 트레이드오프 문서화"
+      - title: "[Docs] ★ 인덱스 설계 트레이드오프 문서화"
         assignee: 신선우
         labels: [performance-seat, trade-off-doc]
-      - title: "[신선우] Elasticsearch 환경 세팅"
+      - title: "[Chore] Elasticsearch 환경 세팅"
         assignee: 신선우
         labels: [infra, performance-seat]
-      - title: "[신선우] 공연 오픈 스케줄러 구현 (오픈 시간 → 좌석 AVAILABLE 전환 + 대기열 입장 허용)"
+      - title: "[Feat] 공연 오픈 스케줄러 구현 (오픈 시간 → 좌석 AVAILABLE 전환 + 대기열 입장 허용)"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[조준형] 유저 관련 QueryDSL 쿼리 작성"
+      - title: "[Feat] 유저 관련 QueryDSL 쿼리 작성"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] Kafka Producer·Consumer 기본 구조 설계"
+      - title: "[Feat] Kafka Producer·Consumer 기본 구조 설계"
         assignee: 조준형
         labels: [user-notification, feature]
 
@@ -199,31 +199,31 @@ weeks:
     phase: "phase-2-search-event"
     milestone: "Week 6 - Elasticsearch + Kafka 구현"
     issues:
-      - title: "[노주희] DB ↔ ES 동기화 전략 결정 리뷰"
+      - title: "[Chore] DB ↔ ES 동기화 전략 결정 리뷰"
         assignee: 노주희
         labels: [booking, review]
-      - title: "[노주희] QueryDSL vs ES 역할 분리 방향 확정"
+      - title: "[Chore] QueryDSL vs ES 역할 분리 방향 확정"
         assignee: 노주희
         labels: [booking, review]
-      - title: "[노주희] Kafka 예매 완료 이벤트 Producer 구현"
+      - title: "[Feat] Kafka 예매 완료 이벤트 Producer 구현"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[신선우] 공연 검색 인덱싱 + 한국어 분석기(nori) 적용"
+      - title: "[Feat] 공연 검색 인덱싱 + 한국어 분석기(nori) 적용"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[신선우] ★ ES 선택 이유 트레이드오프 문서화"
+      - title: "[Docs] ★ ES 선택 이유 트레이드오프 문서화"
         assignee: 신선우
         labels: [performance-seat, trade-off-doc]
-      - title: "[신선우] 검색 API 응답 확인"
+      - title: "[Test] 검색 API 응답 확인"
         assignee: 신선우
         labels: [performance-seat, test]
-      - title: "[신선우] 인기 공연 랭킹 (Redis Sorted Set 활용)"
+      - title: "[Feat] 인기 공연 랭킹 (Redis Sorted Set 활용)"
         assignee: 신선우
         labels: [performance-seat, feature]
-      - title: "[조준형] 이메일 알림 Consumer 구현"
+      - title: "[Feat] 이메일 알림 Consumer 구현"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] 예매 통계 집계 Consumer 구현"
+      - title: "[Feat] 예매 통계 집계 Consumer 구현"
         assignee: 조준형
         labels: [user-notification, feature]
 
@@ -232,28 +232,28 @@ weeks:
     phase: "phase-2-search-event"
     milestone: "Week 7 - Kafka 안정성"
     issues:
-      - title: "[노주희] ★ Kafka vs Redis pub/sub 비교 문서 작성"
+      - title: "[Docs] ★ Kafka vs Redis pub/sub 비교 문서 작성"
         assignee: 노주희
         labels: [booking, trade-off-doc]
-      - title: "[노주희] Producer 멱등성 설정"
+      - title: "[Feat] Producer 멱등성 설정"
         assignee: 노주희
         labels: [booking, feature]
-      - title: "[신선우] ES 검색 성능 추가 개선"
+      - title: "[Perf] ES 검색 성능 추가 개선"
         assignee: 신선우
         labels: [performance-seat, perf]
-      - title: "[신선우] 공연 오픈 스케줄러 안정성 테스트"
+      - title: "[Test] 공연 오픈 스케줄러 안정성 테스트"
         assignee: 신선우
         labels: [performance-seat, test]
-      - title: "[신선우] ★ 대기열 설계 트레이드오프 문서화"
+      - title: "[Docs] ★ 대기열 설계 트레이드오프 문서화"
         assignee: 신선우
         labels: [performance-seat, trade-off-doc]
-      - title: "[조준형] Consumer 실패 처리·재시도 구현"
+      - title: "[Feat] Consumer 실패 처리·재시도 구현"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[조준형] ★ DLQ(Dead Letter Queue) 설계 + 문서화"
+      - title: "[Docs] ★ DLQ(Dead Letter Queue) 설계 + 문서화"
         assignee: 조준형
         labels: [user-notification, trade-off-doc]
-      - title: "[조준형] ★ Kafka 멱등성·파티셔닝 전략 문서화"
+      - title: "[Docs] ★ Kafka 멱등성·파티셔닝 전략 문서화"
         assignee: 조준형
         labels: [user-notification, trade-off-doc]
 
@@ -262,31 +262,31 @@ weeks:
     phase: "phase-2-search-event"
     milestone: "Week 8 - 모니터링 + 부하테스트 Before"
     issues:
-      - title: "[노주희] ★ 병목 지점 리스트 작성"
+      - title: "[Docs] ★ 병목 지점 리스트 작성"
         assignee: 노주희
         labels: [booking, trade-off-doc]
-      - title: "[노주희] 리팩토링 우선순위 회의 주도"
+      - title: "[Chore] 리팩토링 우선순위 회의 주도"
         assignee: 노주희
         labels: [team]
-      - title: "[신선우] Jaeger 분산 추적 연동"
+      - title: "[Chore] Jaeger 분산 추적 연동"
         assignee: 신선우
         labels: [infra, performance-seat]
-      - title: "[신선우] Loki 로그 수집 세팅"
+      - title: "[Chore] Loki 로그 수집 세팅"
         assignee: 신선우
         labels: [infra, performance-seat]
-      - title: "[조준형] ★ Prometheus + Grafana 대시보드 구축"
+      - title: "[Chore] ★ Prometheus + Grafana 대시보드 구축"
         assignee: 조준형
         labels: [user-notification, infra]
-      - title: "[조준형] k6 부하테스트 1차 TPS 측정"
+      - title: "[Perf] k6 부하테스트 1차 TPS 측정"
         assignee: 조준형
         labels: [user-notification, perf]
-      - title: "[조준형] SLO 정의 + 알람 규칙 설정"
+      - title: "[Chore] SLO 정의 + 알람 규칙 설정"
         assignee: 조준형
         labels: [user-notification, infra]
-      - title: "[조준형] 예매 통계 Grafana 시각화 연동"
+      - title: "[Feat] 예매 통계 Grafana 시각화 연동"
         assignee: 조준형
         labels: [user-notification, feature]
-      - title: "[공통] Before 수치 확정 — 리팩토링 기준선 설정 (8주차 체크포인트)"
+      - title: "[Chore] Before 수치 확정 — 리팩토링 기준선 설정 (8주차 체크포인트)"
         labels: [team, checkpoint]
 
   # ------------------------------------------------------------------
@@ -295,34 +295,34 @@ weeks:
     phase: "phase-3-refactor"
     milestone: "Week 9 - 쿼리 최적화 + 캐시·락 튜닝"
     issues:
-      - title: "[노주희] ★ 분산 락 TTL 최적화"
+      - title: "[Docs] ★ 분산 락 TTL 최적화"
         assignee: 노주희
         labels: [booking, trade-off-doc]
-      - title: "[노주희] 예매 트랜잭션 성능 개선"
+      - title: "[Perf] 예매 트랜잭션 성능 개선"
         assignee: 노주희
         labels: [booking, perf]
-      - title: "[노주희] 리팩토링 우선순위 팀 회의 주도"
+      - title: "[Chore] 리팩토링 우선순위 팀 회의 주도"
         assignee: 노주희
         labels: [team]
-      - title: "[신선우] ★ N+1 제거 — fetch join / batch size 적용"
+      - title: "[Perf] ★ N+1 제거 — fetch join / batch size 적용"
         assignee: 신선우
         labels: [perf, performance-seat]
-      - title: "[신선우] 복합 인덱스 추가 + 실행계획 재확인"
+      - title: "[Perf] 복합 인덱스 추가 + 실행계획 재확인"
         assignee: 신선우
         labels: [perf, performance-seat]
-      - title: "[신선우] ★ 캐시 히트율 80% 이상 목표 달성"
+      - title: "[Perf] ★ 캐시 히트율 80% 이상 목표 달성"
         assignee: 신선우
         labels: [perf, trade-off-doc, performance-seat]
-      - title: "[신선우] 대기열 처리량 개선"
+      - title: "[Perf] 대기열 처리량 개선"
         assignee: 신선우
         labels: [performance-seat, perf]
-      - title: "[조준형] HikariCP 커넥션 풀 튜닝"
+      - title: "[Perf] HikariCP 커넥션 풀 튜닝"
         assignee: 조준형
         labels: [perf, infra, user-notification]
-      - title: "[조준형] Kafka Consumer 처리량 측정"
+      - title: "[Perf] Kafka Consumer 처리량 측정"
         assignee: 조준형
         labels: [user-notification, perf]
-      - title: "[조준형] Grafana 지표 추가"
+      - title: "[Chore] Grafana 지표 추가"
         assignee: 조준형
         labels: [user-notification, infra]
 
@@ -331,28 +331,28 @@ weeks:
     phase: "phase-3-refactor"
     milestone: "Week 10 - 테스트 커버리지"
     issues:
-      - title: "[노주희] 핵심 도메인(예매·분산 락) 단위 테스트 작성"
+      - title: "[Test] 핵심 도메인(예매·분산 락) 단위 테스트 작성"
         assignee: 노주희
         labels: [booking, test]
-      - title: "[노주희] ★ 통합 테스트 — 예매 동시성 시나리오"
+      - title: "[Test] ★ 통합 테스트 — 예매 동시성 시나리오"
         assignee: 노주희
         labels: [booking, test]
-      - title: "[신선우] 공연·검색·대기열 도메인 단위 테스트 작성"
+      - title: "[Test] 공연·검색·대기열 도메인 단위 테스트 작성"
         assignee: 신선우
         labels: [performance-seat, test]
-      - title: "[신선우] ★ 통합 테스트 — 대기열 → 예매 입장 시나리오"
+      - title: "[Test] ★ 통합 테스트 — 대기열 → 예매 입장 시나리오"
         assignee: 신선우
         labels: [performance-seat, test]
-      - title: "[조준형] 유저·알림 단위 테스트 작성"
+      - title: "[Test] 유저·알림 단위 테스트 작성"
         assignee: 조준형
         labels: [user-notification, test]
-      - title: "[조준형] ★ Kafka Consumer 통합 테스트 (알림·통계·DLQ)"
+      - title: "[Test] ★ Kafka Consumer 통합 테스트 (알림·통계·DLQ)"
         assignee: 조준형
         labels: [user-notification, test]
-      - title: "[조준형] k6 재측정 — TPS 변화 기록"
+      - title: "[Perf] k6 재측정 — TPS 변화 기록"
         assignee: 조준형
         labels: [user-notification, perf]
-      - title: "[공통] 핵심 도메인 커버리지 목표 달성 확인 (10주차 체크포인트)"
+      - title: "[Chore] 핵심 도메인 커버리지 목표 달성 확인 (10주차 체크포인트)"
         labels: [team, checkpoint]
 
   # ------------------------------------------------------------------
@@ -360,28 +360,28 @@ weeks:
     phase: "phase-3-refactor"
     milestone: "Week 11 - 코드 구조 개선 + 부하테스트 After"
     issues:
-      - title: "[노주희] Before → After 수치 비교 문서 작성"
+      - title: "[Docs] Before → After 수치 비교 문서 작성"
         assignee: 노주희
         labels: [docs, team]
-      - title: "[노주희] 전체 코드 리뷰 주도"
+      - title: "[Chore] 전체 코드 리뷰 주도"
         assignee: 노주희
         labels: [review, team]
-      - title: "[신선우] ★ 레이어 책임 재분리 (서비스 비대화 해결)"
+      - title: "[Refactor] ★ 레이어 책임 재분리 (서비스 비대화 해결)"
         assignee: 신선우
         labels: [refactor, trade-off-doc, performance-seat]
-      - title: "[신선우] 중복 코드 제거"
+      - title: "[Refactor] 중복 코드 제거"
         assignee: 신선우
         labels: [refactor, performance-seat]
-      - title: "[조준형] ★ k6 전체 시나리오 재실행"
+      - title: "[Perf] ★ k6 전체 시나리오 재실행"
         assignee: 조준형
         labels: [perf, trade-off-doc, user-notification]
-      - title: "[조준형] Grafana Before/After 스크린샷 캡처"
+      - title: "[Docs] Grafana Before/After 스크린샷 캡처"
         assignee: 조준형
         labels: [docs, user-notification]
-      - title: "[조준형] 개선 이유 분석 문서 작성"
+      - title: "[Docs] 개선 이유 분석 문서 작성"
         assignee: 조준형
         labels: [docs, user-notification]
-      - title: "[공통] ★ 수치 정리: TPS·p99·캐시 히트율 Before/After 최종 확정 (11주차 체크포인트)"
+      - title: "[Docs] ★ 수치 정리: TPS·p99·캐시 히트율 Before/After 최종 확정 (11주차 체크포인트)"
         labels: [team, checkpoint, trade-off-doc]
 
   # ------------------------------------------------------------------
@@ -389,35 +389,35 @@ weeks:
     phase: "phase-3-refactor"
     milestone: "Week 12 - 문서화 + 포트폴리오 완성"
     issues:
-      - title: "[노주희] ★ README 아키텍처 다이어그램 작성"
+      - title: "[Docs] ★ README 아키텍처 다이어그램 작성"
         assignee: 노주희
         labels: [trade-off-doc, docs, team]
-      - title: "[노주희] ★ 성능 개선 수치 포폴 문서 작성"
+      - title: "[Docs] ★ 성능 개선 수치 포폴 문서 작성"
         assignee: 노주희
         labels: [trade-off-doc, docs, team]
-      - title: "[노주희] 트레이드오프 문서 최종 편집"
+      - title: "[Docs] 트레이드오프 문서 최종 편집"
         assignee: 노주희
         labels: [docs, team]
-      - title: "[노주희] 최종 시연 영상 or GIF 캡처"
+      - title: "[Docs] 최종 시연 영상 or GIF 캡처"
         assignee: 노주희
         labels: [docs, team]
-      - title: "[신선우] 기술 선택 이유 전체 정리"
+      - title: "[Docs] 기술 선택 이유 전체 정리"
         assignee: 신선우
         labels: [docs, performance-seat]
-      - title: "[신선우] API 명세(Swagger) 최신화"
+      - title: "[Docs] API 명세(Swagger) 최신화"
         assignee: 신선우
         labels: [docs, performance-seat]
-      - title: "[신선우] 개인 면접 Q&A 자기 정리"
+      - title: "[Docs] 개인 면접 Q&A 자기 정리"
         assignee: 신선우
         labels: [docs, team]
-      - title: "[조준형] 팀원별 기여 내역 정리"
+      - title: "[Docs] 팀원별 기여 내역 정리"
         assignee: 조준형
         labels: [docs, team]
-      - title: "[조준형] Grafana 대시보드 스크린샷 첨부"
+      - title: "[Docs] Grafana 대시보드 스크린샷 첨부"
         assignee: 조준형
         labels: [docs, user-notification]
-      - title: "[조준형] 개인 면접 Q&A 자기 정리"
+      - title: "[Docs] 개인 면접 Q&A 자기 정리"
         assignee: 조준형
         labels: [docs, team]
-      - title: "[공통] 포트폴리오 제출 가능 상태 최종 확인"
+      - title: "[Chore] 포트폴리오 제출 가능 상태 최종 확인"
         labels: [team, checkpoint]

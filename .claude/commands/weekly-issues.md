@@ -20,6 +20,24 @@ description: 로드맵(issues.yaml) 기준 다음 주차 GitHub 이슈/마일스
 - 실제 생성 전에, 이번에 만들 milestone 제목 / 마감일 / 이슈 목록(제목, 담당자, 라벨)을
   사용자에게 정리해서 보여주고 진행 여부를 확인받는다.
 
+## 2.5. 이슈 제목 형식
+- 이슈 제목에는 도메인·담당자 정보를 넣지 않는다. 그 정보는 전적으로 `labels`(도메인 라벨)와
+  `assignee` 필드가 담당한다 — 제목은 `[Type] 설명` 형식만 쓴다.
+  - 예: `[Feat] 예매(Booking) 엔티티 구현`, `[Docs] ★ 분산 락 선택 이유 트레이드오프 문서화`
+- `Type`은 Title Case 영문 단어이며, 아래 6종 중 하나만 쓴다: `Feat`, `Test`, `Perf`,
+  `Refactor`, `Docs`, `Chore`. 새 타입 태그를 임의로 만들지 않는다.
+- `Type`은 그 이슈의 타입 라벨(`docs/LABEL_SYSTEM.md`의 10종)로부터 아래 우선순위로 기계적으로
+  정해진다 (여러 타입 라벨이 같이 붙는 경우가 있으므로 순서대로 첫 매치를 사용):
+  1. `test` → `Test`
+  2. `perf` → `Perf`
+  3. `refactor` → `Refactor`
+  4. `feature` → `Feat`
+  5. `docs` 또는 `trade-off-doc` → `Docs`
+  6. 그 외 (`infra`, `review`, `team`, `checkpoint`만 있거나 위 5개에 해당하는 라벨이 하나도
+     없는 경우) → `Chore`
+- 즉 라벨이 먼저 정해지고 제목의 `[Type]`은 그 라벨에서 파생된다 — 제목을 보고 라벨을
+  따로 고민하지 않는다.
+
 ## 3. Milestone 생성 (없을 때만)
 ```
 gh api repos/{repo}/milestones -f title="{milestone_title}" -f due_on="{due_on}T00:00:00Z" -f state=open
@@ -98,9 +116,17 @@ issues.yaml에 없는 새 라벨을 임의로 만들지 않는다.
   확인/조율 목적에 맞게 짧게 쓴다.
 
 ## 6. 이슈 생성 (중복 체크 후)
-- 먼저 `gh issue list --repo {repo} --state all --limit 500 --json title` 로 기존 이슈 제목 목록을 가져온다.
-- yaml의 해당 주차 이슈들을 순회하며, 제목이 기존 목록에 없는 것만 5단계에서 작성한
-  body로 아래처럼 생성:
+- 먼저 `gh issue list --repo {repo} --state all --limit 500 --json title,assignees` 로 기존
+  이슈의 (제목, 담당자) 목록을 가져온다.
+- 중복 체크는 **제목 단독이 아니라 (title, assignee) 조합**으로 한다. 제목에서 도메인·담당자
+  표기를 뺐기 때문에, 담당자만 다르고 설명은 동일한 개인 이슈(예: 담당자별 "[Docs] 개인 면접
+  Q&A 자기 정리")가 존재할 수 있다 — 이런 케이스는 서로 다른 이슈이므로 제목이 같다는
+  이유로 스킵하면 안 된다.
+  - 개인 이슈: (title, 해당 담당자 1명) 조합이 기존 목록에 이미 있으면 스킵.
+  - `assignee` 필드가 없는 공통 이슈: (title, 팀원 전체 assignee 집합) 조합이 기존 목록의
+    assignees 집합과 동일하면 스킵.
+- yaml의 해당 주차 이슈들을 순회하며, (title, assignee) 조합이 기존 목록에 없는 것만 5단계에서
+  작성한 body로 아래처럼 생성:
 ```
 gh issue create --repo {repo} \
   --title "{title}" \
@@ -110,10 +136,10 @@ gh issue create --repo {repo} \
   --assignee "{github_id}"
 ```
 - `assignee` 필드가 있는 개인 이슈는 그 담당자 1명만 `--assignee`로 지정한다.
-- `assignee` 필드가 없는 `[공통]` 이슈는 팀원 전체가 관련된 일이므로, `assignees` 매핑에 있는
+- `assignee` 필드가 없는 공통 이슈는 팀원 전체가 관련된 일이므로, `assignees` 매핑에 있는
   팀원 전원을 `--assignee`로 각각 지정한다 (예: `--assignee "JuheeNoh123" --assignee "sunwoo1256" --assignee "junhyung001"`).
   담당자를 비워두지 않는다.
-- 이미 존재하는 제목은 건너뛰고 사용자에게 스킵된 항목으로 보고한다.
+- 이미 존재하는 (title, assignee) 조합은 건너뛰고 사용자에게 스킵된 항목으로 보고한다.
 
 ## 7. 결과 보고
 생성된 이슈 수, 스킵된 이슈 수, milestone 링크(gh api 응답의 html_url 활용)를
