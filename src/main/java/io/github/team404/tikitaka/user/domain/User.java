@@ -53,27 +53,22 @@ public class User {
             OAuthProvider provider,
             String providerId
     ) {
+        LocalDateTime now = LocalDateTime.now();
+
         this.email = email;
         this.passwordHash = passwordHash;
         this.name = name;
         this.provider = provider;
         this.providerId = providerId;
-    }
-    //로그인 성공 시 마지막 로그인 시간을 현재 시간으로 변경한다.
-    //추후 OAuth2LoginSuccessHandler에서 로그인 성공 처리를 진행할 때 호출한다.
-    public void updateLastLoginAt() {
-        this.lastLoginAt = LocalDateTime.now();
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
         this.createdAt = now;
         this.updatedAt = now;
     }
 
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
+    // 로그인 성공 시 마지막 로그인 시간과 사용자 수정 시간을 변경한다.
+    public void updateLastLoginAt() {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.lastLoginAt = now;
+        this.updatedAt = now;
     }
 }
