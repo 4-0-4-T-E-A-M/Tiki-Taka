@@ -1,4 +1,4 @@
-package io.github.team404.tikitaka.userTest;
+package io.github.team404.tikitaka.userTest.Repository;
 
 import io.github.team404.tikitaka.user.domain.OAuthProvider;
 import io.github.team404.tikitaka.user.domain.User;
