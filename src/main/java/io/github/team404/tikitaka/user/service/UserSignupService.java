@@ -13,6 +13,10 @@ import org.springframework.stereotype.Service;
 public class UserSignupService {
     private final UserRepository userRepository;
 
+    public boolean existsById(Long userId) {
+        return userRepository.existsById(userId);
+    }
+
     // 요청 정보가 들어왔을때 사용자가 존재하지 않는다면 회원가입한다.
     public OAuthUserSignupResponse signupIfAbsent(
             OAuthUserSignupRequest request

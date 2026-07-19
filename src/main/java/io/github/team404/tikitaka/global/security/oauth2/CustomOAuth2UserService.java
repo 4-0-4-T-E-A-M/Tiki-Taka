@@ -22,6 +22,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         OAuth2User oauth2User = super.loadUser(userRequest);
 
         GoogleOAuth2UserInfo userInfo = new GoogleOAuth2UserInfo(oauth2User.getAttributes());
+        validateRequiredFields(userInfo);
+
         OAuthUserSignupRequest request = new OAuthUserSignupRequest(
                 userInfo.getProviderId(),
                 userInfo.getEmail(),
@@ -36,5 +38,18 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     new OAuth2Error("USER_REGISTRATION_FAILED"), e.getMessage(), e
             );
         }
+    }
+
+    private void validateRequiredFields(GoogleOAuth2UserInfo userInfo) {
+        if (isBlank(userInfo.getProviderId()) || isBlank(userInfo.getEmail()) || isBlank(userInfo.getName())) {
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error("INVALID_USER_INFO"),
+                    "Google 계정에서 필수 사용자 정보(providerId, email, name)를 가져오지 못했습니다."
+            );
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
