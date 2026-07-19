@@ -1,13 +1,12 @@
 package io.github.team404.tikitaka.global.security.jwt;
 
-import io.github.team404.tikitaka.global.exception.JwtValidationException;
+import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
 import io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
@@ -15,7 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 
 @Component
@@ -26,6 +24,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final ErrorResponseWriter errorResponseWriter;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -48,7 +47,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (JwtValidationException e) {
-            writeErrorResponse(response, e.getMessage());
+            errorResponseWriter.write(response, e.getErrorCode());
             return;
         }
 
@@ -61,12 +60,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return header.substring(BEARER_PREFIX.length());
         }
         return null;
-    }
-
-    private void writeErrorResponse(HttpServletResponse response, String message) throws IOException {
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(String.format("{\"message\":\"%s\"}", message));
     }
 }

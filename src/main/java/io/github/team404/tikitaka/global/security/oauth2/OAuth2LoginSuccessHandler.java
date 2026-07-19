@@ -1,5 +1,7 @@
 package io.github.team404.tikitaka.global.security.oauth2;
 
+import io.github.team404.tikitaka.global.exception.CommonErrorCode;
+import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -34,6 +36,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
     private static final String REFRESH_TOKEN_COOKIE_NAME = "refreshToken";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final ErrorResponseWriter errorResponseWriter;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -42,10 +45,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         OAuth2User principal = (OAuth2User) authentication.getPrincipal();
         if (!(principal instanceof CustomOAuth2User customOAuth2User)) {
             log.error("예상하지 못한 Principal 타입입니다: {}", principal.getClass().getName());
-            response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-            response.getWriter().write("{\"message\":\"인증 처리 중 오류가 발생했습니다.\"}");
+            errorResponseWriter.write(response, CommonErrorCode.INTERNAL_SERVER_ERROR);
             return;
         }
 

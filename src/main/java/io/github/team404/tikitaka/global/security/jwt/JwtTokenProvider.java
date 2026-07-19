@@ -1,6 +1,5 @@
 package io.github.team404.tikitaka.global.security.jwt;
 
-import io.github.team404.tikitaka.global.exception.JwtValidationException;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -35,14 +34,14 @@ public class JwtTokenProvider {
 
     public String generateAccessToken(Long userId) {
         if (userId == null) {
-            throw new JwtValidationException("userId는 null일 수 없습니다.");
+            throw new JwtValidationException(JwtErrorCode.NULL_USER_ID);
         }
         return buildToken(userId, ACCESS, accessTokenExpiry);
     }
 
     public String generateRefreshToken(Long userId) {
         if (userId == null) {
-            throw new JwtValidationException("userId는 null일 수 없습니다.");
+            throw new JwtValidationException(JwtErrorCode.NULL_USER_ID);
         }
         return buildToken(userId, REFRESH, refreshTokenExpiry);
     }
@@ -51,7 +50,7 @@ public class JwtTokenProvider {
         validateNotBlank(token);
         Claims claims = parseClaims(token);
         if (!ACCESS.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))) {
-            throw new JwtValidationException("Access Token이 아닙니다.");
+            throw new JwtValidationException(JwtErrorCode.NOT_ACCESS_TOKEN);
         }
     }
 
@@ -59,7 +58,7 @@ public class JwtTokenProvider {
         validateNotBlank(token);
         Claims claims = parseClaims(token);
         if (!REFRESH.equals(claims.get(TOKEN_TYPE_CLAIM, String.class))) {
-            throw new JwtValidationException("Refresh Token이 아닙니다.");
+            throw new JwtValidationException(JwtErrorCode.NOT_REFRESH_TOKEN);
         }
     }
 
@@ -68,7 +67,7 @@ public class JwtTokenProvider {
         try {
             return Long.parseLong(subject);
         } catch (NumberFormatException e) {
-            throw new JwtValidationException("유효하지 않은 사용자 ID입니다.");
+            throw new JwtValidationException(JwtErrorCode.INVALID_USER_ID);
         }
     }
 
@@ -82,7 +81,7 @@ public class JwtTokenProvider {
 
     private void validateNotBlank(String token) {
         if (token == null || token.isBlank()) {
-            throw new JwtValidationException("토큰이 비어 있습니다.");
+            throw new JwtValidationException(JwtErrorCode.EMPTY_TOKEN);
         }
     }
 
@@ -94,9 +93,9 @@ public class JwtTokenProvider {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (ExpiredJwtException e) {
-            throw new JwtValidationException("만료된 토큰입니다.");
+            throw new JwtValidationException(JwtErrorCode.EXPIRED_TOKEN);
         } catch (JwtException e) {
-            throw new JwtValidationException("유효하지 않은 토큰입니다.");
+            throw new JwtValidationException(JwtErrorCode.INVALID_TOKEN);
         }
     }
 

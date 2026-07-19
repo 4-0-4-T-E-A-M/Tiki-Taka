@@ -1,6 +1,7 @@
 package io.github.team404.tikitaka.security.oauth2;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.oauth2.CustomOAuth2User;
 import io.github.team404.tikitaka.global.security.oauth2.OAuth2LoginSuccessHandler;
@@ -37,7 +38,7 @@ class OAuth2LoginSuccessHandlerTest {
 
     @BeforeEach
     void setUp() {
-        successHandler = new OAuth2LoginSuccessHandler(jwtTokenProvider);
+        successHandler = new OAuth2LoginSuccessHandler(jwtTokenProvider, new ErrorResponseWriter(new ObjectMapper().findAndRegisterModules()));
     }
 
     @Test
