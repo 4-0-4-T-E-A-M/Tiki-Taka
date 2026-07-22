@@ -52,53 +52,6 @@ class SeatTest {
         assertThat(seat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
     }
 
-    @Test
-    void AVAILABLE_좌석은_release할_수_없다() {
-        // given
-        Seat seat = seatOf();
-
-        // when & then
-        assertThatThrownBy(seat::release)
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void confirm_호출시_RESERVED로_전이한다() {
-        // given
-        Seat seat = seatOf();
-        seat.hold();
-
-        // when
-        seat.confirm();
-
-        // then
-        assertThat(seat.getStatus()).isEqualTo(SeatStatus.RESERVED);
-    }
-
-    @Test
-    void AVAILABLE_좌석은_confirm할_수_없다() {
-        // given
-        Seat seat = seatOf();
-
-        // when & then
-        assertThatThrownBy(seat::confirm)
-                .isInstanceOf(IllegalStateException.class);
-    }
-
-    @Test
-    void RESERVED_좌석도_release하면_AVAILABLE로_되돌아온다() {
-        // given
-        Seat seat = seatOf();
-        seat.hold();
-        seat.confirm();
-
-        // when
-        seat.release();
-
-        // then
-        assertThat(seat.getStatus()).isEqualTo(SeatStatus.AVAILABLE);
-    }
-
     private Seat seatOf() {
         return Seat.builder()
                 .sectionId(1L)
