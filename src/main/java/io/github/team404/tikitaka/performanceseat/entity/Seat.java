@@ -14,7 +14,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// booking 도메인의 예매 생성 트랜잭션 경계를 위해 최소 필드만 우선 구현 (issue #13 참고, 좌석 도메인 상세는 신선우 담당)
+// 상태 전이: AVAILABLE -> HELD(hold, 5분 TTL) -> RESERVED(confirm, 결제 확정) / HELD·RESERVED -> AVAILABLE(release, 취소·만료 복구)
 @Entity
 @Table(name = "seats")
 @Getter
@@ -74,8 +74,19 @@ public class Seat {
         this.status = SeatStatus.HELD;
     }
 
-    // 예매 취소/만료 시 다시 예매 가능 상태로 되돌림
+    // 결제 확정 시 홀드를 확정 상태로 전이 (HELD만 가능)
+    public void confirm() {
+        if (status != SeatStatus.HELD) {
+            throw new IllegalStateException("HELD 상태의 좌석만 확정할 수 있습니다. 현재 상태: " + status);
+        }
+        this.status = SeatStatus.RESERVED;
+    }
+
+    // 예매 취소/만료 시 다시 예매 가능 상태로 되돌림 (HELD 또는 RESERVED만 가능)
     public void release() {
+        if (status != SeatStatus.HELD && status != SeatStatus.RESERVED) {
+            throw new IllegalStateException("HELD 또는 RESERVED 상태의 좌석만 해제할 수 있습니다. 현재 상태: " + status);
+        }
         this.status = SeatStatus.AVAILABLE;
     }
 }
