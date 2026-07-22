@@ -3,6 +3,7 @@ package io.github.team404.tikitaka.user.controller;
 import io.github.team404.tikitaka.global.exception.JwtValidationException;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.user.service.UserSignupService;
+import io.github.team404.tikitaka.user.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,6 +38,9 @@ class AuthControllerTest {
 
     @MockitoBean
     private UserSignupService userSignupService;
+
+    @MockitoBean
+    private UserRepository userRepository;
 
     @Test
     void 정상_Refresh_Token이면_새_Access_Token을_발급한다() throws Exception {

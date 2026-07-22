@@ -2,6 +2,8 @@ package io.github.team404.tikitaka.global.security.jwt;
 
 import io.github.team404.tikitaka.global.exception.JwtValidationException;
 import io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal;
+import io.github.team404.tikitaka.user.domain.User;
+import io.github.team404.tikitaka.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -9,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
@@ -16,7 +19,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
+import java.util.List;
+import java.util.NoSuchElementException;
 
 @Component
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -42,13 +47,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwtTokenProvider.validateAccessToken(token);
 
             Long userId = jwtTokenProvider.getUserIdFromToken(token);
+            User user = userRepository.findById(userId).orElseThrow();
             CustomUserPrincipal principal = new CustomUserPrincipal(userId);
             UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(principal, null, Collections.emptyList());
+                    new UsernamePasswordAuthenticationToken(
+                            principal,
+                            null,
+                            List.of(new SimpleGrantedAuthority(
+                                    "ROLE_" + user.getRole().name())));
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (JwtValidationException e) {
             writeErrorResponse(response, e.getMessage());
+            return;
+        } catch (NoSuchElementException e) {
+            writeErrorResponse(response, "사용자를 찾을 수 없습니다.");
             return;
         }
 

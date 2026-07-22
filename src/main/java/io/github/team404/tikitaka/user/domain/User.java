@@ -31,6 +31,10 @@ public class User {
     @Column(nullable = false)
     private OAuthProvider provider;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role = UserRole.USER;
+
     @Column(name = "provider_id")
     private String providerId;
 
@@ -47,6 +51,13 @@ public class User {
         this.name = name;
         this.provider = provider;
         this.providerId = providerId;
+    }
+
+    public void updateRole(UserRole role) {
+        if (role == null) {
+            throw new IllegalArgumentException("사용자 권한은 null일 수 없습니다.");
+        }
+        this.role = role;
     }
 
     @PrePersist
