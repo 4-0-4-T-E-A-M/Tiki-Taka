@@ -2,8 +2,7 @@ package io.github.team404.tikitaka.global.security.jwt;
 
 import io.github.team404.tikitaka.global.exception.JwtValidationException;
 import io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal;
-import io.github.team404.tikitaka.user.domain.User;
-import io.github.team404.tikitaka.user.repository.UserRepository;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -20,7 +19,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.NoSuchElementException;
 
 @Component
 @RequiredArgsConstructor
@@ -30,7 +28,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -47,25 +44,33 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jwtTokenProvider.validateAccessToken(token);
 
             Long userId = jwtTokenProvider.getUserIdFromToken(token);
-            User user = userRepository.findById(userId).orElseThrow();
+            UserRole role = parseRole(jwtTokenProvider.getRoleFromToken(token));
+
             CustomUserPrincipal principal = new CustomUserPrincipal(userId);
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(
                             principal,
                             null,
-                            List.of(new SimpleGrantedAuthority(
-                                    "ROLE_" + user.getRole().name())));
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
             SecurityContextHolder.getContext().setAuthentication(authentication);
         } catch (JwtValidationException e) {
             writeErrorResponse(response, e.getMessage());
             return;
-        } catch (NoSuchElementException e) {
-            writeErrorResponse(response, "사용자를 찾을 수 없습니다.");
-            return;
         }
 
         filterChain.doFilter(request, response);
+    }
+
+    private UserRole parseRole(String role) {
+        if (role == null) {
+            throw new JwtValidationException("토큰에 권한 정보가 없습니다.");
+        }
+        try {
+            return UserRole.valueOf(role);
+        } catch (IllegalArgumentException e) {
+            throw new JwtValidationException("지원하지 않는 권한입니다.");
+        }
     }
 
     private String extractBearerToken(HttpServletRequest request) {

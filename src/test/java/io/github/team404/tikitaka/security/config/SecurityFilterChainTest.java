@@ -71,7 +71,7 @@ class SecurityFilterChainTest {
 
     @Test
     void 보호_경로는_정상_Access_Token으로_접근하면_200을_반환한다() throws Exception {
-        String accessToken = jwtTokenProvider.generateAccessToken(userId);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, UserRole.USER);
 
         mockMvc.perform(get("/test/protected").header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
@@ -89,7 +89,7 @@ class SecurityFilterChainTest {
 
     @Test
     void 보호_경로에_변조된_토큰으로_접근하면_401이고_필터_고유_메시지를_반환한다() throws Exception {
-        String accessToken = jwtTokenProvider.generateAccessToken(userId);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, UserRole.USER);
 
         mockMvc.perform(get("/test/protected").header("Authorization", "Bearer " + accessToken + "tampered"))
                 .andExpect(status().isUnauthorized())
@@ -112,7 +112,7 @@ class SecurityFilterChainTest {
                 .isEqualTo(UserRole.ADMIN);
 
         mockMvc.perform(get("/api/admin/test")
-                        .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId)))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId, UserRole.ADMIN)))
                 .andExpect(status().isOk())
                 .andExpect(content().string("admin-ok"));
     }
@@ -120,7 +120,7 @@ class SecurityFilterChainTest {
     @Test
     void USER는_관리자_경로에_접근하면_403을_반환한다() throws Exception {
         mockMvc.perform(get("/api/admin/test")
-                        .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId)))
+                        .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId, UserRole.USER)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."));
     }

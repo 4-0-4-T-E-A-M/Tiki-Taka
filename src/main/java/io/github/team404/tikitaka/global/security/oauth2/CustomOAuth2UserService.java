@@ -32,7 +32,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         try {
             OAuthUserSignupResponse response = userSignupService.signupIfAbsent(request);
-            return new CustomOAuth2User(oauth2User, response.getUserId());
+            return new CustomOAuth2User(oauth2User, response.getUserId(), response.getRole());
         } catch (Exception e) {
             throw new OAuth2AuthenticationException(
                     new OAuth2Error("USER_REGISTRATION_FAILED"), e.getMessage(), e

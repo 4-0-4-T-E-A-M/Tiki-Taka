@@ -4,9 +4,6 @@ import io.github.team404.tikitaka.global.exception.JwtValidationException;
 import io.github.team404.tikitaka.global.security.jwt.JwtAuthenticationFilter;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal;
-import io.github.team404.tikitaka.user.domain.OAuthProvider;
-import io.github.team404.tikitaka.user.domain.User;
-import io.github.team404.tikitaka.user.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -21,7 +18,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.Collections;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -41,14 +37,11 @@ class JwtAuthenticationFilterTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
-    @Mock
-    private UserRepository userRepository;
-
     private JwtAuthenticationFilter filter;
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthenticationFilter(jwtTokenProvider, userRepository);
+        filter = new JwtAuthenticationFilter(jwtTokenProvider);
         SecurityContextHolder.clearContext();
     }
 
@@ -60,7 +53,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void 정상_Access_Token이면_SecurityContext에_인증객체를_저장하고_다음_필터로_넘어간다() throws Exception {
         given(jwtTokenProvider.getUserIdFromToken("valid-access-token")).willReturn(42L);
-        given(userRepository.findById(42L)).willReturn(Optional.of(user()));
+        given(jwtTokenProvider.getRoleFromToken("valid-access-token")).willReturn("USER");
 
         MockHttpServletRequest request = requestWithBearer("valid-access-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -80,10 +73,8 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void ADMIN_사용자의_인증객체에는_ROLE_ADMIN이_등록된다() throws Exception {
-        User admin = user();
-        admin.updateRole(io.github.team404.tikitaka.user.domain.UserRole.ADMIN);
         given(jwtTokenProvider.getUserIdFromToken("admin-token")).willReturn(7L);
-        given(userRepository.findById(7L)).willReturn(Optional.of(admin));
+        given(jwtTokenProvider.getRoleFromToken("admin-token")).willReturn("ADMIN");
 
         filter.doFilter(requestWithBearer("admin-token"), new MockHttpServletResponse(), new RecordingFilterChain());
 
@@ -92,17 +83,32 @@ class JwtAuthenticationFilterTest {
     }
 
     @Test
-    void 존재하지_않는_사용자의_토큰이면_401을_응답하고_체인을_호출하지_않는다() throws Exception {
-        given(jwtTokenProvider.getUserIdFromToken("unknown-user-token")).willReturn(404L);
-        given(userRepository.findById(404L)).willReturn(Optional.empty());
+    void role_claim이_없으면_401을_응답하고_체인을_호출하지_않는다() throws Exception {
+        given(jwtTokenProvider.getUserIdFromToken("no-role-token")).willReturn(404L);
+        given(jwtTokenProvider.getRoleFromToken("no-role-token")).willReturn(null);
         RecordingFilterChain chain = new RecordingFilterChain();
         MockHttpServletResponse response = new MockHttpServletResponse();
 
-        filter.doFilter(requestWithBearer("unknown-user-token"), response, chain);
+        filter.doFilter(requestWithBearer("no-role-token"), response, chain);
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("사용자를 찾을 수 없습니다.");
+        assertThat(response.getContentAsString()).contains("토큰에 권한 정보가 없습니다.");
         assertThat(chain.called.get()).isFalse();
+    }
+
+    @Test
+    void role_claim이_지원하지_않는_값이면_401을_응답하고_기본권한을_부여하지_않는다() throws Exception {
+        given(jwtTokenProvider.getUserIdFromToken("bad-role-token")).willReturn(1L);
+        given(jwtTokenProvider.getRoleFromToken("bad-role-token")).willReturn("SUPERUSER");
+        RecordingFilterChain chain = new RecordingFilterChain();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(requestWithBearer("bad-role-token"), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("지원하지 않는 권한입니다.");
+        assertThat(chain.called.get()).isFalse();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     @Test
@@ -208,7 +214,7 @@ class JwtAuthenticationFilterTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(new CustomUserPrincipal(1L), null, Collections.emptyList()));
         given(jwtTokenProvider.getUserIdFromToken("valid-access-token")).willReturn(99L);
-        given(userRepository.findById(99L)).willReturn(Optional.of(user()));
+        given(jwtTokenProvider.getRoleFromToken("valid-access-token")).willReturn("USER");
 
         MockHttpServletRequest request = requestWithBearer("valid-access-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -239,10 +245,6 @@ class JwtAuthenticationFilterTest {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer " + token);
         return request;
-    }
-
-    private User user() {
-        return new User("test@example.com", "테스트", OAuthProvider.GOOGLE, "provider-id");
     }
 
     private static class RecordingFilterChain implements FilterChain {

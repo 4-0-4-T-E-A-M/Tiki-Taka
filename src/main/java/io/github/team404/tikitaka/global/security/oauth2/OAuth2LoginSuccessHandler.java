@@ -50,7 +50,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         }
 
         Long userId = customOAuth2User.getUserId();
-        String accessToken = jwtTokenProvider.generateAccessToken(userId);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, customOAuth2User.getRole());
         String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE_NAME, refreshToken)

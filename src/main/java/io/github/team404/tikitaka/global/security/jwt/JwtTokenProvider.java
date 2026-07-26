@@ -1,6 +1,7 @@
 package io.github.team404.tikitaka.global.security.jwt;
 
 import io.github.team404.tikitaka.global.exception.JwtValidationException;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -17,6 +18,7 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private static final String TOKEN_TYPE_CLAIM = "type";
+    private static final String ROLE_CLAIM = "role";
     private static final String ACCESS = "ACCESS";
     private static final String REFRESH = "REFRESH";
 
@@ -33,11 +35,22 @@ public class JwtTokenProvider {
         this.refreshTokenExpiry = refreshTokenExpiry;
     }
 
-    public String generateAccessToken(Long userId) {
+    public String generateAccessToken(Long userId, UserRole role) {
         if (userId == null) {
             throw new JwtValidationException("userId는 null일 수 없습니다.");
         }
-        return buildToken(userId, ACCESS, accessTokenExpiry);
+        if (role == null) {
+            throw new JwtValidationException("role은 null일 수 없습니다.");
+        }
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))
+                .claim(TOKEN_TYPE_CLAIM, ACCESS)
+                .claim(ROLE_CLAIM, role.name())
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + accessTokenExpiry))
+                .signWith(signingKey)
+                .compact();
     }
 
     public String generateRefreshToken(Long userId) {
@@ -70,6 +83,10 @@ public class JwtTokenProvider {
         } catch (NumberFormatException e) {
             throw new JwtValidationException("유효하지 않은 사용자 ID입니다.");
         }
+    }
+
+    public String getRoleFromToken(String token) {
+        return parseClaims(token).get(ROLE_CLAIM, String.class);
     }
 
     public long getAccessTokenExpiry() {
