@@ -8,10 +8,16 @@ import io.github.team404.tikitaka.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 @RequiredArgsConstructor
 public class UserSignupService {
     private final UserRepository userRepository;
+
+    public Optional<User> findById(Long userId) {
+        return userRepository.findById(userId);
+    }
 
     // 요청 정보가 들어왔을때 사용자가 존재하지 않는다면 회원가입한다.
     public OAuthUserSignupResponse signupIfAbsent(

@@ -225,11 +225,6 @@ class UserRepositoryTest {
             String name,
             String providerId
     ) {
-        return User.builder()
-                .email(email)
-                .name(name)
-                .provider(OAuthProvider.GOOGLE)
-                .providerId(providerId)
-                .build();
+        return new User(email, name, OAuthProvider.GOOGLE, providerId);
     }
 }
