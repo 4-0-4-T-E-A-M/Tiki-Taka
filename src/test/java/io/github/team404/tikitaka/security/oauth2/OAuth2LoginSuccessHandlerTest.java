@@ -5,6 +5,7 @@ import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.oauth2.CustomOAuth2User;
 import io.github.team404.tikitaka.global.security.oauth2.OAuth2LoginSuccessHandler;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,7 +45,7 @@ class OAuth2LoginSuccessHandlerTest {
     @Test
     void CustomOAuth2User의_userId로_Access_Token과_Refresh_Token을_발급한다() throws Exception {
         // given
-        given(jwtTokenProvider.generateAccessToken(USER_ID)).willReturn(ACCESS_TOKEN);
+        given(jwtTokenProvider.generateAccessToken(USER_ID, UserRole.USER)).willReturn(ACCESS_TOKEN);
         given(jwtTokenProvider.generateRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
         given(jwtTokenProvider.getAccessTokenExpiry()).willReturn(3_600_000L);
         given(jwtTokenProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
@@ -67,7 +68,7 @@ class OAuth2LoginSuccessHandlerTest {
     @Test
     void Refresh_Token은_HttpOnly_쿠키로만_전달되고_URL이나_바디에_노출되지_않는다() throws Exception {
         // given
-        given(jwtTokenProvider.generateAccessToken(USER_ID)).willReturn(ACCESS_TOKEN);
+        given(jwtTokenProvider.generateAccessToken(USER_ID, UserRole.USER)).willReturn(ACCESS_TOKEN);
         given(jwtTokenProvider.generateRefreshToken(USER_ID)).willReturn(REFRESH_TOKEN);
         given(jwtTokenProvider.getAccessTokenExpiry()).willReturn(3_600_000L);
         given(jwtTokenProvider.getRefreshTokenExpiry()).willReturn(604_800_000L);
@@ -110,7 +111,7 @@ class OAuth2LoginSuccessHandlerTest {
     private CustomOAuth2User customOAuth2User(Long userId) {
         DefaultOAuth2User delegate = new DefaultOAuth2User(
                 List.of(), Map.of("sub", "google-sub-123"), "sub");
-        return new CustomOAuth2User(delegate, userId);
+        return new CustomOAuth2User(delegate, userId, UserRole.USER);
     }
 
     private Authentication authenticationOf(OAuth2User principal) {

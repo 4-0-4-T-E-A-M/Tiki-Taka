@@ -5,6 +5,9 @@ import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
 import io.github.team404.tikitaka.global.security.jwt.JwtErrorCode;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.jwt.JwtValidationException;
+import io.github.team404.tikitaka.user.domain.OAuthProvider;
+import io.github.team404.tikitaka.user.domain.User;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import io.github.team404.tikitaka.user.exception.UserErrorCode;
 import io.github.team404.tikitaka.user.service.UserSignupService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +19,8 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+import java.util.Optional;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
@@ -48,8 +53,10 @@ class AuthControllerTest {
 
     @Test
     void 정상_Refresh_Token이면_새_Access_Token을_발급한다() throws Exception {
+        User user = new User("test@example.com", "테스트", OAuthProvider.GOOGLE, "provider-id");
         given(jwtTokenProvider.getUserIdFromToken("valid-refresh")).willReturn(1L);
-        given(jwtTokenProvider.generateAccessToken(1L)).willReturn("new-access-token");
+        given(userSignupService.findById(1L)).willReturn(Optional.of(user));
+        given(jwtTokenProvider.generateAccessToken(1L, UserRole.USER)).willReturn("new-access-token");
         given(jwtTokenProvider.getAccessTokenExpiry()).willReturn(3_600_000L);
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/refresh")
@@ -125,8 +132,7 @@ class AuthControllerTest {
     @Test
     void 존재하지_않는_사용자면_404를_반환하고_새_토큰을_발급하지_않는다() throws Exception {
         given(jwtTokenProvider.getUserIdFromToken("ghost-user-refresh")).willReturn(999L);
-        willThrow(new BusinessException(UserErrorCode.USER_NOT_FOUND))
-                .given(userSignupService).validateExists(999L);
+        given(userSignupService.findById(999L)).willReturn(Optional.empty());
 
         mockMvc.perform(MockMvcRequestBuilders.post("/api/auth/refresh")
                         .cookie(new jakarta.servlet.http.Cookie(COOKIE_NAME, "ghost-user-refresh")))

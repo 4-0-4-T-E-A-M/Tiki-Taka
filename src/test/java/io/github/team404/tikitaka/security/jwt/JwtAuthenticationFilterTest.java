@@ -56,6 +56,7 @@ class JwtAuthenticationFilterTest {
     @Test
     void 정상_Access_Token이면_SecurityContext에_인증객체를_저장하고_다음_필터로_넘어간다() throws Exception {
         given(jwtTokenProvider.getUserIdFromToken("valid-access-token")).willReturn(42L);
+        given(jwtTokenProvider.getRoleFromToken("valid-access-token")).willReturn("USER");
 
         MockHttpServletRequest request = requestWithBearer("valid-access-token");
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -69,6 +70,48 @@ class JwtAuthenticationFilterTest {
         assertThat(authentication).isNotNull();
         assertThat(authentication.getPrincipal()).isInstanceOf(CustomUserPrincipal.class);
         assertThat(((CustomUserPrincipal) authentication.getPrincipal()).getUserId()).isEqualTo(42L);
+        assertThat(authentication.getAuthorities()).extracting("authority")
+                .containsExactly("ROLE_USER");
+    }
+
+    @Test
+    void ADMIN_사용자의_인증객체에는_ROLE_ADMIN이_등록된다() throws Exception {
+        given(jwtTokenProvider.getUserIdFromToken("admin-token")).willReturn(7L);
+        given(jwtTokenProvider.getRoleFromToken("admin-token")).willReturn("ADMIN");
+
+        filter.doFilter(requestWithBearer("admin-token"), new MockHttpServletResponse(), new RecordingFilterChain());
+
+        assertThat(SecurityContextHolder.getContext().getAuthentication().getAuthorities())
+                .extracting("authority").containsExactly("ROLE_ADMIN");
+    }
+
+    @Test
+    void role_claim이_없으면_401을_응답하고_체인을_호출하지_않는다() throws Exception {
+        given(jwtTokenProvider.getUserIdFromToken("no-role-token")).willReturn(404L);
+        given(jwtTokenProvider.getRoleFromToken("no-role-token")).willReturn(null);
+        RecordingFilterChain chain = new RecordingFilterChain();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(requestWithBearer("no-role-token"), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("토큰에 권한 정보가 없습니다.");
+        assertThat(chain.called.get()).isFalse();
+    }
+
+    @Test
+    void role_claim이_지원하지_않는_값이면_401을_응답하고_기본권한을_부여하지_않는다() throws Exception {
+        given(jwtTokenProvider.getUserIdFromToken("bad-role-token")).willReturn(1L);
+        given(jwtTokenProvider.getRoleFromToken("bad-role-token")).willReturn("SUPERUSER");
+        RecordingFilterChain chain = new RecordingFilterChain();
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        filter.doFilter(requestWithBearer("bad-role-token"), response, chain);
+
+        assertThat(response.getStatus()).isEqualTo(401);
+        assertThat(response.getContentAsString()).contains("지원하지 않는 권한입니다.");
+        assertThat(chain.called.get()).isFalse();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
     @Test
@@ -174,6 +217,7 @@ class JwtAuthenticationFilterTest {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(new CustomUserPrincipal(1L), null, Collections.emptyList()));
         given(jwtTokenProvider.getUserIdFromToken("valid-access-token")).willReturn(99L);
+        given(jwtTokenProvider.getRoleFromToken("valid-access-token")).willReturn("USER");
 
         MockHttpServletRequest request = requestWithBearer("valid-access-token");
         MockHttpServletResponse response = new MockHttpServletResponse();

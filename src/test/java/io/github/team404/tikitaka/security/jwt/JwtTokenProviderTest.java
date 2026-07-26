@@ -2,6 +2,7 @@ package io.github.team404.tikitaka.security.jwt;
 
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.jwt.JwtValidationException;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,9 +25,30 @@ class JwtTokenProviderTest {
 
     @Test
     void Access_Token을_생성할_수_있다() {
-        String token = jwtTokenProvider.generateAccessToken(1L);
+        String token = jwtTokenProvider.generateAccessToken(1L, UserRole.USER);
 
         assertThat(token).isNotNull().isNotBlank();
+    }
+
+    @Test
+    void Access_Token에는_role_claim이_포함된다() {
+        String token = jwtTokenProvider.generateAccessToken(1L, UserRole.ADMIN);
+
+        assertThat(jwtTokenProvider.getRoleFromToken(token)).isEqualTo("ADMIN");
+    }
+
+    @Test
+    void Refresh_Token에는_role_claim이_없다() {
+        String token = jwtTokenProvider.generateRefreshToken(1L);
+
+        assertThat(jwtTokenProvider.getRoleFromToken(token)).isNull();
+    }
+
+    @Test
+    void role이_null이면_Access_Token을_생성하지_않는다() {
+        assertThatThrownBy(() -> jwtTokenProvider.generateAccessToken(1L, null))
+                .isInstanceOf(JwtValidationException.class)
+                .hasMessageContaining("role은 null일 수 없습니다.");
     }
 
     @Test
@@ -38,7 +60,7 @@ class JwtTokenProviderTest {
 
     @Test
     void Access_Token에서_userId를_추출할_수_있다() {
-        String token = jwtTokenProvider.generateAccessToken(42L);
+        String token = jwtTokenProvider.generateAccessToken(42L, UserRole.USER);
 
         assertThat(jwtTokenProvider.getUserIdFromToken(token)).isEqualTo(42L);
     }
@@ -52,7 +74,7 @@ class JwtTokenProviderTest {
 
     @Test
     void Access_Token_검증에_성공한다() {
-        String token = jwtTokenProvider.generateAccessToken(1L);
+        String token = jwtTokenProvider.generateAccessToken(1L, UserRole.USER);
 
         jwtTokenProvider.validateAccessToken(token);
     }
@@ -75,7 +97,7 @@ class JwtTokenProviderTest {
 
     @Test
     void Refresh_Token_검증_메서드는_Access_Token을_거부한다() {
-        String accessToken = jwtTokenProvider.generateAccessToken(1L);
+        String accessToken = jwtTokenProvider.generateAccessToken(1L, UserRole.USER);
 
         assertThatThrownBy(() -> jwtTokenProvider.validateRefreshToken(accessToken))
                 .isInstanceOf(JwtValidationException.class)
@@ -87,7 +109,7 @@ class JwtTokenProviderTest {
         String differentSecret = "ZGlmZmVyZW50LXNlY3JldC1rZXktZm9yLXRlc3RpbmctcHVycG9zZXM=";
         JwtTokenProvider otherProvider =
                 new JwtTokenProvider(differentSecret, ACCESS_TOKEN_EXPIRY, REFRESH_TOKEN_EXPIRY);
-        String tokenFromOther = otherProvider.generateAccessToken(1L);
+        String tokenFromOther = otherProvider.generateAccessToken(1L, UserRole.USER);
 
         assertThatThrownBy(() -> jwtTokenProvider.validateAccessToken(tokenFromOther))
                 .isInstanceOf(JwtValidationException.class)
@@ -98,7 +120,7 @@ class JwtTokenProviderTest {
     void 만료된_토큰은_검증에_실패한다() {
         JwtTokenProvider shortLivedProvider =
                 new JwtTokenProvider(VALID_SECRET, 1L, REFRESH_TOKEN_EXPIRY);
-        String token = shortLivedProvider.generateAccessToken(1L);
+        String token = shortLivedProvider.generateAccessToken(1L, UserRole.USER);
 
         assertThatThrownBy(() -> {
             Thread.sleep(5);
@@ -124,7 +146,7 @@ class JwtTokenProviderTest {
 
     @Test
     void userId가_null이면_Access_Token을_생성하지_않는다() {
-        assertThatThrownBy(() -> jwtTokenProvider.generateAccessToken(null))
+        assertThatThrownBy(() -> jwtTokenProvider.generateAccessToken(null, UserRole.USER))
                 .isInstanceOf(JwtValidationException.class)
                 .hasMessageContaining("userId는 null일 수 없습니다.");
     }

@@ -1,5 +1,6 @@
 package io.github.team404.tikitaka.global.security.oauth2;
 
+import io.github.team404.tikitaka.user.domain.UserRole;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
@@ -12,10 +13,12 @@ public class CustomOAuth2User implements OAuth2User {
 
     private final OAuth2User delegate;
     private final Long userId;
+    private final UserRole role;
 
-    public CustomOAuth2User(OAuth2User delegate, Long userId) {
+    public CustomOAuth2User(OAuth2User delegate, Long userId, UserRole role) {
         this.delegate = delegate;
         this.userId = userId;
+        this.role = role;
     }
 
     @Override

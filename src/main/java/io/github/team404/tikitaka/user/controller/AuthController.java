@@ -1,9 +1,12 @@
 package io.github.team404.tikitaka.user.controller;
 
+import io.github.team404.tikitaka.global.exception.BusinessException;
 import io.github.team404.tikitaka.global.security.jwt.JwtErrorCode;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.jwt.JwtValidationException;
+import io.github.team404.tikitaka.user.domain.User;
 import io.github.team404.tikitaka.user.dto.response.AccessTokenResponse;
+import io.github.team404.tikitaka.user.exception.UserErrorCode;
 import io.github.team404.tikitaka.user.service.UserSignupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -32,9 +35,10 @@ public class AuthController {
         jwtTokenProvider.validateRefreshToken(refreshToken);
 
         Long userId = jwtTokenProvider.getUserIdFromToken(refreshToken);
-        userSignupService.validateExists(userId);
+        User user = userSignupService.findById(userId)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
-        String newAccessToken = jwtTokenProvider.generateAccessToken(userId);
+        String newAccessToken = jwtTokenProvider.generateAccessToken(userId, user.getRole());
         return ResponseEntity.ok(
                 AccessTokenResponse.of(newAccessToken, jwtTokenProvider.getAccessTokenExpiry())
         );

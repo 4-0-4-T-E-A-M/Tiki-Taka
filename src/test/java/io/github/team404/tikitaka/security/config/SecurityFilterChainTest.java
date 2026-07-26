@@ -2,6 +2,11 @@ package io.github.team404.tikitaka.security.config;
 
 import io.github.team404.tikitaka.TikitakaApplication;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
+import io.github.team404.tikitaka.user.domain.OAuthProvider;
+import io.github.team404.tikitaka.user.domain.User;
+import io.github.team404.tikitaka.user.domain.UserRole;
+import io.github.team404.tikitaka.user.repository.UserRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,11 +34,24 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class SecurityFilterChainTest {
 
+    private Long userId;
+
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setUp() {
+        userRepository.deleteAll();
+        userId = userRepository.save(
+                new User("test@example.com", "테스트", OAuthProvider.GOOGLE, "provider-id"))
+                .getUserId();
+    }
 
     @Test
     void 공개_경로_api_auth_refresh는_토큰_없이도_필터에_막히지_않고_컨트롤러까지_도달한다() throws Exception {
@@ -57,11 +75,11 @@ class SecurityFilterChainTest {
 
     @Test
     void 보호_경로는_정상_Access_Token으로_접근하면_200을_반환한다() throws Exception {
-        String accessToken = jwtTokenProvider.generateAccessToken(1L);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, UserRole.USER);
 
         mockMvc.perform(get("/test/protected").header("Authorization", "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(content().string("ok:1"));
+                .andExpect(content().string("ok:" + userId));
     }
 
     @Test
@@ -77,7 +95,7 @@ class SecurityFilterChainTest {
 
     @Test
     void 보호_경로에_변조된_토큰으로_접근하면_401이고_필터_고유_메시지를_반환한다() throws Exception {
-        String accessToken = jwtTokenProvider.generateAccessToken(1L);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, UserRole.USER);
 
         mockMvc.perform(get("/test/protected").header("Authorization", "Bearer " + accessToken + "tampered"))
                 .andExpect(status().isUnauthorized())
@@ -93,6 +111,35 @@ class SecurityFilterChainTest {
                 .andExpect(status().is3xxRedirection());
     }
 
+    @Test
+    void ADMIN은_관리자_경로에_접근할_수_있다() throws Exception {
+        User user = userRepository.findById(userId).orElseThrow();
+        user.updateRole(UserRole.ADMIN);
+        userRepository.saveAndFlush(user);
+        org.assertj.core.api.Assertions.assertThat(userRepository.findById(userId).orElseThrow().getRole())
+                .isEqualTo(UserRole.ADMIN);
+
+        mockMvc.perform(get("/api/admin/test")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId, UserRole.ADMIN)))
+                .andExpect(status().isOk())
+                .andExpect(content().string("admin-ok"));
+    }
+
+    @Test
+    void USER는_관리자_경로에_접근하면_403을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/admin/test")
+                        .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId, UserRole.USER)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."));
+    }
+
+    @Test
+    void 미인증_사용자는_관리자_경로에_접근하면_401을_반환한다() throws Exception {
+        mockMvc.perform(get("/api/admin/test"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("인증이 필요합니다."));
+    }
+
     @RestController
     static class ProtectedTestController {
         @GetMapping("/test/protected")
@@ -100,6 +147,11 @@ class SecurityFilterChainTest {
             io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal principal =
                     (io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal) authentication.getPrincipal();
             return "ok:" + principal.getUserId();
+        }
+
+        @GetMapping("/api/admin/test")
+        public String adminEndpoint() {
+            return "admin-ok";
         }
     }
 }

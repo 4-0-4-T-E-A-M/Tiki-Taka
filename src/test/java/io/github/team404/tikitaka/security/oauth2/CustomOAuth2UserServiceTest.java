@@ -4,6 +4,7 @@ import io.github.team404.tikitaka.global.security.oauth2.CustomOAuth2User;
 import io.github.team404.tikitaka.global.security.oauth2.CustomOAuth2UserService;
 import io.github.team404.tikitaka.user.dto.request.OAuthUserSignupRequest;
 import io.github.team404.tikitaka.user.domain.OAuthProvider;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import io.github.team404.tikitaka.user.dto.response.OAuthUserSignupResponse;
 import io.github.team404.tikitaka.user.service.UserSignupService;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,7 +59,7 @@ class CustomOAuth2UserServiceTest {
                 "name", "테스트유저"
         ));
         given(userSignupService.signupIfAbsent(any(OAuthUserSignupRequest.class)))
-                .willReturn(new OAuthUserSignupResponse(1L, "test@gmail.com", "테스트유저", OAuthProvider.GOOGLE));
+                .willReturn(new OAuthUserSignupResponse(1L, "test@gmail.com", "테스트유저", OAuthProvider.GOOGLE, UserRole.USER));
 
         // when
         OAuth2User result = customOAuth2UserService.loadUser(buildUserRequest());
@@ -78,7 +79,7 @@ class CustomOAuth2UserServiceTest {
                 "name", "기존유저"
         ));
         given(userSignupService.signupIfAbsent(any(OAuthUserSignupRequest.class)))
-                .willReturn(new OAuthUserSignupResponse(7L, "existing@gmail.com", "기존유저", OAuthProvider.GOOGLE));
+                .willReturn(new OAuthUserSignupResponse(7L, "existing@gmail.com", "기존유저", OAuthProvider.GOOGLE, UserRole.USER));
 
         // when
         OAuth2User result = customOAuth2UserService.loadUser(buildUserRequest());
@@ -96,7 +97,7 @@ class CustomOAuth2UserServiceTest {
                 "name", "테스트유저"
         ));
         given(userSignupService.signupIfAbsent(any(OAuthUserSignupRequest.class)))
-                .willReturn(new OAuthUserSignupResponse(1L, "test@gmail.com", "테스트유저", OAuthProvider.GOOGLE));
+                .willReturn(new OAuthUserSignupResponse(1L, "test@gmail.com", "테스트유저", OAuthProvider.GOOGLE, UserRole.USER));
 
         // when
         customOAuth2UserService.loadUser(buildUserRequest());
