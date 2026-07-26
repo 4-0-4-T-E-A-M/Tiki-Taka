@@ -1,7 +1,7 @@
 package io.github.team404.tikitaka.security.jwt;
 
-import io.github.team404.tikitaka.global.exception.JwtValidationException;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
+import io.github.team404.tikitaka.global.security.jwt.JwtValidationException;
 import io.github.team404.tikitaka.user.domain.UserRole;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

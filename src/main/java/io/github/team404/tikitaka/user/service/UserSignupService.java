@@ -1,9 +1,11 @@
 package io.github.team404.tikitaka.user.service;
 
+import io.github.team404.tikitaka.global.exception.BusinessException;
 import io.github.team404.tikitaka.user.domain.OAuthProvider;
 import io.github.team404.tikitaka.user.domain.User;
 import io.github.team404.tikitaka.user.dto.request.OAuthUserSignupRequest;
 import io.github.team404.tikitaka.user.dto.response.OAuthUserSignupResponse;
+import io.github.team404.tikitaka.user.exception.UserErrorCode;
 import io.github.team404.tikitaka.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +16,16 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class UserSignupService {
     private final UserRepository userRepository;
+
+    public boolean existsById(Long userId) {
+        return userRepository.existsById(userId);
+    }
+
+    public void validateExists(Long userId) {
+        if (!existsById(userId)) {
+            throw new BusinessException(UserErrorCode.USER_NOT_FOUND);
+        }
+    }
 
     public Optional<User> findById(Long userId) {
         return userRepository.findById(userId);

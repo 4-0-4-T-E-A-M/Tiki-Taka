@@ -1,8 +1,11 @@
 package io.github.team404.tikitaka.security.jwt;
 
-import io.github.team404.tikitaka.global.exception.JwtValidationException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
 import io.github.team404.tikitaka.global.security.jwt.JwtAuthenticationFilter;
+import io.github.team404.tikitaka.global.security.jwt.JwtErrorCode;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
+import io.github.team404.tikitaka.global.security.jwt.JwtValidationException;
 import io.github.team404.tikitaka.global.security.principal.CustomUserPrincipal;
 import jakarta.servlet.FilterChain;
 import org.junit.jupiter.api.AfterEach;
@@ -41,7 +44,7 @@ class JwtAuthenticationFilterTest {
 
     @BeforeEach
     void setUp() {
-        filter = new JwtAuthenticationFilter(jwtTokenProvider);
+        filter = new JwtAuthenticationFilter(jwtTokenProvider, new ErrorResponseWriter(new ObjectMapper().findAndRegisterModules()));
         SecurityContextHolder.clearContext();
     }
 
@@ -139,7 +142,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void 빈_Bearer_토큰이면_필터가_직접_401을_응답하고_체인을_호출하지_않는다() throws Exception {
-        willThrow(new JwtValidationException("토큰이 비어 있습니다."))
+        willThrow(new JwtValidationException(JwtErrorCode.EMPTY_TOKEN))
                 .given(jwtTokenProvider).validateAccessToken("");
 
         MockHttpServletRequest request = requestWithBearer("");
@@ -156,7 +159,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void Refresh_Token을_Access_Token_대신_사용하면_401이고_체인을_호출하지_않는다() throws Exception {
-        willThrow(new JwtValidationException("Access Token이 아닙니다."))
+        willThrow(new JwtValidationException(JwtErrorCode.NOT_ACCESS_TOKEN))
                 .given(jwtTokenProvider).validateAccessToken("refresh-token-value");
 
         MockHttpServletRequest request = requestWithBearer("refresh-token-value");
@@ -173,7 +176,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void 만료된_토큰이면_401이고_체인을_호출하지_않는다() throws Exception {
-        willThrow(new JwtValidationException("만료된 토큰입니다."))
+        willThrow(new JwtValidationException(JwtErrorCode.EXPIRED_TOKEN))
                 .given(jwtTokenProvider).validateAccessToken("expired-token");
 
         MockHttpServletRequest request = requestWithBearer("expired-token");
@@ -189,7 +192,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void 변조된_토큰이면_401이고_체인을_호출하지_않는다() throws Exception {
-        willThrow(new JwtValidationException("유효하지 않은 토큰입니다."))
+        willThrow(new JwtValidationException(JwtErrorCode.INVALID_TOKEN))
                 .given(jwtTokenProvider).validateAccessToken("tampered-token");
 
         MockHttpServletRequest request = requestWithBearer("tampered-token");
@@ -228,7 +231,7 @@ class JwtAuthenticationFilterTest {
 
     @Test
     void 예외_응답_후에는_다음_필터체인을_다시_호출하지_않는다() throws Exception {
-        willThrow(new JwtValidationException("유효하지 않은 토큰입니다."))
+        willThrow(new JwtValidationException(JwtErrorCode.INVALID_TOKEN))
                 .given(jwtTokenProvider).validateAccessToken("bad-token");
 
         MockHttpServletRequest request = requestWithBearer("bad-token");

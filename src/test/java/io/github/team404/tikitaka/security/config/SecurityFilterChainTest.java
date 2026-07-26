@@ -59,14 +59,18 @@ class SecurityFilterChainTest {
         // AuthController 자체 메시지가 나온다는 것은 요청이 Security 계층을 통과해 컨트롤러까지 도달했다는 뜻이다.
         mockMvc.perform(post("/api/auth/refresh"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Refresh Token이 없습니다."));
+                .andExpect(jsonPath("$.code").value("AUTH_108"))
+                .andExpect(jsonPath("$.message").value("Refresh Token이 없습니다."))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
     void 보호_경로는_토큰_없이_접근하면_401과_공통_인증실패_메시지를_반환한다() throws Exception {
         mockMvc.perform(get("/test/protected"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("인증이 필요합니다."));
+                .andExpect(jsonPath("$.code").value("AUTH_001"))
+                .andExpect(jsonPath("$.message").value("인증이 필요합니다."))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
@@ -84,7 +88,9 @@ class SecurityFilterChainTest {
 
         mockMvc.perform(get("/test/protected").header("Authorization", "Bearer " + refreshToken))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("Access Token이 아닙니다."));
+                .andExpect(jsonPath("$.code").value("AUTH_102"))
+                .andExpect(jsonPath("$.message").value("Access Token이 아닙니다."))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
@@ -93,7 +99,9 @@ class SecurityFilterChainTest {
 
         mockMvc.perform(get("/test/protected").header("Authorization", "Bearer " + accessToken + "tampered"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."));
+                .andExpect(jsonPath("$.code").value("AUTH_107"))
+                .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."))
+                .andExpect(jsonPath("$.timestamp").exists());
     }
 
     @Test
