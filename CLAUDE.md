@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew test --tests "*.TikitakaApplicationTests.contextLoads"
 ```
 
-Environment: copy `.env.example` to `.env` and fill in `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` for a local PostgreSQL instance. `.env` is loaded automatically via `spring-dotenv` (`me.paulschwarz:springboot3-dotenv`) — no need to export env vars manually. There is no `docker-compose.yml` yet; PostgreSQL must currently be run separately (planned for later weeks per the roadmap).
+Environment: copy `.env.example` to `.env` and fill in `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` (PostgreSQL) and `REDIS_HOST` / `REDIS_PORT` (Redis). `.env` is loaded automatically via `spring-dotenv` (`me.paulschwarz:springboot3-dotenv`) — no need to export env vars manually. `docker compose up -d` starts local PostgreSQL and Redis containers (see `docker-compose.yml`).
 
 ## Project
 
