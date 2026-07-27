@@ -1,0 +1,81 @@
+package io.github.team404.tikitaka.user.domain;
+
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = "users")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_id")
+    private Long userId;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    // LOCAL 로그인 확장성을 위해 필드만 유지
+    @Column(name = "password_hash")
+    private String passwordHash;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OAuthProvider provider;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private UserRole role = UserRole.USER;
+
+    @Column(name = "provider_id")
+    private String providerId;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
+
+    public User(
+            String email,
+            String name,
+            OAuthProvider provider,
+            String providerId
+    ) {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.email = email;
+        this.name = name;
+        this.provider = provider;
+        this.providerId = providerId;
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    public void updateRole(UserRole role) {
+        if (role == null) {
+            throw new IllegalArgumentException("사용자 권한은 null일 수 없습니다.");
+        }
+        this.role = role;
+    }
+
+    // 로그인 성공 시 마지막 로그인 시간과 사용자 수정 시간을 변경한다.
+    public void updateLastLoginAt() {
+        LocalDateTime now = LocalDateTime.now();
+
+        this.lastLoginAt = now;
+        this.updatedAt = now;
+    }
+}
