@@ -75,3 +75,16 @@ rebase 과정에서 develop에 이미 `src/test/resources/application.yaml`(H2�
 추가된 걸 확인하고 그 패턴에 맞춰 dotenv 의존성 추가 대신 같은 파일에 `spring.data.redis.host/port`
 기본값(`localhost`/`6379`)을 넣는 쪽으로 다시 바꿈 — 테스트가 dotenv/env var에 전혀 기대지 않고
 자체 설정으로 완결되는 게 더 일관적이라고 판단.
+
+### 이슈 #35 — 동시 예매 시나리오 테스트 (100명 동시) (구현 완료, PR 대기 중)
+- 브랜치: `feature/35-test-동시-예매-시나리오-테스트` (`#34` PR #46이 아직 미머지라 `feature/34`
+  위에서 분기 — `#34`가 머지되면 `git rebase --onto origin/develop feature/34-... feature/35-...`
+  로 옮길 것, `#34`→develop rebase 때와 동일한 절차)
+- 변경 파일: `ReservationConcurrencyTest.java`에 100-스레드 테스트 메서드 추가 (새 파일 안 만들고
+  #34에서 만든 파일 재사용 — static Redis 컨테이너/빈 재사용, 클래스 상단 주석도 갱신)
+- #34에서 이미 정한 설계(즉시 실패 waitTime=0, 재시도는 대기열 도메인 소관)를 그대로 두고,
+  100명 규모에서도 성립하는지만 검증. 새로운 설계 판단은 없었음
+- 검증 항목: 성공 1건/충돌(409) 99건, 그 외 형태의 실패 0건, 테스트 종료 후 `Seat.status`가
+  `HELD` 1건(이슈 원문은 "RESERVED"라고 적혀 있지만 실제 코드의 임시 홀드 상태명은 `HELD`),
+  `ReservationSeat` 매핑 1건
+- 검증: `./gradlew test --tests "*.ReservationConcurrencyTest"`, 전체 `./gradlew test` 모두 통과
