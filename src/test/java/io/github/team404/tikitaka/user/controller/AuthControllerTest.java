@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -63,9 +64,14 @@ class AuthControllerTest {
                         .cookie(new jakarta.servlet.http.Cookie(COOKIE_NAME, "valid-refresh")))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.accessToken").value("new-access-token"))
-                .andExpect(jsonPath("$.tokenType").value("Bearer"))
-                .andExpect(jsonPath("$.accessTokenExpiresIn").value(3600));
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.message").value("액세스 토큰 재발급에 성공했습니다."))
+                .andExpect(jsonPath("$.data.accessToken").value("new-access-token"))
+                .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+                .andExpect(jsonPath("$.data.accessTokenExpiresIn").value(3600))
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.tokenType").doesNotExist())
+                .andExpect(jsonPath("$.accessTokenExpiresIn").doesNotExist());
     }
 
     @Test
@@ -74,7 +80,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_108"))
                 .andExpect(jsonPath("$.message").value("Refresh Token이 없습니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -87,7 +94,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_105"))
                 .andExpect(jsonPath("$.message").value("토큰이 비어 있습니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -100,7 +108,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_103"))
                 .andExpect(jsonPath("$.message").value("Refresh Token이 아닙니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -113,7 +122,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_106"))
                 .andExpect(jsonPath("$.message").value("만료된 토큰입니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -126,7 +136,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_107"))
                 .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -139,6 +150,7 @@ class AuthControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_001"))
                 .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 }

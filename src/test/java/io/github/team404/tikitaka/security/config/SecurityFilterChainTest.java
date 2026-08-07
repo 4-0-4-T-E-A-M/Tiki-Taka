@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.nullValue;
 
 /**
  * SecurityConfig가 실제로 구성하는 SecurityFilterChain의 행위(경로별 인증 요구, JWT 필터 적용,
@@ -61,7 +62,8 @@ class SecurityFilterChainTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_108"))
                 .andExpect(jsonPath("$.message").value("Refresh Token이 없습니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -70,7 +72,8 @@ class SecurityFilterChainTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_001"))
                 .andExpect(jsonPath("$.message").value("인증이 필요합니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -90,7 +93,8 @@ class SecurityFilterChainTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_102"))
                 .andExpect(jsonPath("$.message").value("Access Token이 아닙니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -101,7 +105,8 @@ class SecurityFilterChainTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("AUTH_107"))
                 .andExpect(jsonPath("$.message").value("유효하지 않은 토큰입니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -130,14 +135,20 @@ class SecurityFilterChainTest {
         mockMvc.perform(get("/api/admin/test")
                         .header("Authorization", "Bearer " + jwtTokenProvider.generateAccessToken(userId, UserRole.USER)))
                 .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."));
+                .andExpect(jsonPath("$.code").value("AUTH_002"))
+                .andExpect(jsonPath("$.message").value("접근 권한이 없습니다."))
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
     void 미인증_사용자는_관리자_경로에_접근하면_401을_반환한다() throws Exception {
         mockMvc.perform(get("/api/admin/test"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.message").value("인증이 필요합니다."));
+                .andExpect(jsonPath("$.code").value("AUTH_001"))
+                .andExpect(jsonPath("$.message").value("인증이 필요합니다."))
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @RestController

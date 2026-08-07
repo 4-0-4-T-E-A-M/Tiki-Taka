@@ -1,5 +1,6 @@
 package io.github.team404.tikitaka.global.exception;
 
+import io.github.team404.tikitaka.global.response.BaseResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -16,45 +17,50 @@ import org.springframework.web.server.ResponseStatusException;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+    public ResponseEntity<BaseResponse<Void>> handleBusinessException(BusinessException e) {
         ErrorCode errorCode = e.getErrorCode();
         return ResponseEntity.status(errorCode.getHttpStatus())
-                .body(ErrorResponse.from(errorCode));
+                .body(BaseResponse.error(errorCode.getCode(), errorCode.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
+    public ResponseEntity<BaseResponse<Void>> handleMethodArgumentNotValid(MethodArgumentNotValidException e) {
         FieldError fieldError = e.getBindingResult().getFieldErrors().get(0);
-        ErrorResponse errorResponse = ErrorResponse.of(
-                CommonErrorCode.INVALID_INPUT_VALUE.getCode(),
-                fieldError.getDefaultMessage());
         return ResponseEntity.status(CommonErrorCode.INVALID_INPUT_VALUE.getHttpStatus())
-                .body(errorResponse);
+                .body(BaseResponse.error(
+                        CommonErrorCode.INVALID_INPUT_VALUE.getCode(),
+                        fieldError.getDefaultMessage()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+    public ResponseEntity<BaseResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
         return ResponseEntity.status(CommonErrorCode.INVALID_REQUEST_BODY.getHttpStatus())
-                .body(ErrorResponse.from(CommonErrorCode.INVALID_REQUEST_BODY));
+                .body(BaseResponse.error(
+                        CommonErrorCode.INVALID_REQUEST_BODY.getCode(),
+                        CommonErrorCode.INVALID_REQUEST_BODY.getMessage()));
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+    public ResponseEntity<BaseResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
         return ResponseEntity.status(CommonErrorCode.METHOD_NOT_ALLOWED.getHttpStatus())
-                .body(ErrorResponse.from(CommonErrorCode.METHOD_NOT_ALLOWED));
+                .body(BaseResponse.error(
+                        CommonErrorCode.METHOD_NOT_ALLOWED.getCode(),
+                        CommonErrorCode.METHOD_NOT_ALLOWED.getMessage()));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException e) {
+    public ResponseEntity<BaseResponse<Void>> handleResponseStatusException(ResponseStatusException e) {
         HttpStatus httpStatus = HttpStatus.valueOf(e.getStatusCode().value());
-        ErrorResponse errorResponse = ErrorResponse.of(httpStatus.name(), e.getReason());
-        return ResponseEntity.status(httpStatus).body(errorResponse);
+        return ResponseEntity.status(httpStatus)
+                .body(BaseResponse.error(httpStatus.name(), e.getReason()));
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(Exception e) {
+    public ResponseEntity<BaseResponse<Void>> handleException(Exception e) {
         log.error("Unexpected exception occurred", e);
         return ResponseEntity.status(CommonErrorCode.INTERNAL_SERVER_ERROR.getHttpStatus())
-                .body(ErrorResponse.from(CommonErrorCode.INTERNAL_SERVER_ERROR));
+                .body(BaseResponse.error(
+                        CommonErrorCode.INTERNAL_SERVER_ERROR.getCode(),
+                        CommonErrorCode.INTERNAL_SERVER_ERROR.getMessage()));
     }
 }
