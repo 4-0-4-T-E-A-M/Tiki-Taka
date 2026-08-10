@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 
 import io.github.team404.tikitaka.booking.repository.ReservationRepository;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse;
 import io.github.team404.tikitaka.performanceseat.dto.ScheduleCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.SectionCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.SeatRowRequest;
@@ -20,6 +22,7 @@ import io.github.team404.tikitaka.performanceseat.entity.PerformanceRegion;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.entity.Section;
 import io.github.team404.tikitaka.performanceseat.entity.SeatGrade;
+import io.github.team404.tikitaka.performanceseat.repository.PerformanceCacheRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceScheduleRepository;
 import io.github.team404.tikitaka.performanceseat.repository.SeatRepository;
@@ -29,6 +32,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -51,6 +55,9 @@ class PerformanceServiceTest {
 
     @Mock
     private ReservationRepository reservationRepository;
+
+    @Mock
+    private PerformanceCacheRepository performanceCacheRepository;
 
     @InjectMocks
     private PerformanceService performanceService;
@@ -127,6 +134,45 @@ class PerformanceServiceTest {
         // then
         assertThat(found).isEqualTo(performance);
         assertThat(schedules).hasSize(1);
+    }
+
+    @Test
+    void 공연_상세조회시_캐시가_히트되면_DB를_조회하지_않는다() {
+        // given
+        PerformanceDetailResponse cached = new PerformanceDetailResponse(
+                new PerformanceResponse(1L, "첫 콘서트", "아이유", "체조경기장",
+                        PerformanceRegion.SEOUL, PerformanceGenre.CONCERT, null, null, null),
+                List.of());
+        when(performanceCacheRepository.findDetail(1L)).thenReturn(Optional.of(cached));
+
+        // when
+        PerformanceDetailResponse result = performanceService.getPerformanceDetail(1L);
+
+        // then
+        assertThat(result).isEqualTo(cached);
+        verify(performanceRepository, never()).findById(any());
+        verify(performanceCacheRepository, never()).saveDetail(any(), any());
+    }
+
+    @Test
+    void 공연_상세조회시_캐시가_미스되면_DB조회후_캐시를_채운다() {
+        // given
+        Performance performance = performanceOf();
+        PerformanceSchedule schedule = mock(PerformanceSchedule.class);
+        when(performanceCacheRepository.findDetail(1L)).thenReturn(Optional.empty());
+        when(performanceRepository.findById(1L)).thenReturn(Optional.of(performance));
+        when(performanceScheduleRepository.findAllByPerformanceId(1L)).thenReturn(List.of(schedule));
+
+        // when
+        PerformanceDetailResponse result = performanceService.getPerformanceDetail(1L);
+
+        // then
+        assertThat(result.performance().title()).isEqualTo("첫 콘서트");
+        assertThat(result.schedules()).hasSize(1);
+
+        ArgumentCaptor<PerformanceDetailResponse> captor = ArgumentCaptor.forClass(PerformanceDetailResponse.class);
+        verify(performanceCacheRepository, times(1)).saveDetail(any(), captor.capture());
+        assertThat(captor.getValue()).isEqualTo(result);
     }
 
     private Performance performanceOf() {
