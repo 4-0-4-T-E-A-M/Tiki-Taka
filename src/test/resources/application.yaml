@@ -28,3 +28,7 @@ jwt:
   secret: dGlraXRha2EtdGVzdC1zZWNyZXQta2V5LWZvci1qd3QtMjU2Yml0cy1kZXY=
   access-token-expiry: 3600000
   refresh-token-expiry: 604800000
+
+tikitaka:
+  cache:
+    performance-detail-ttl-ms: 900000

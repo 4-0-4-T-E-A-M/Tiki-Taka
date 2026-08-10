@@ -99,6 +99,7 @@ public class PerformanceService {
         }
     }
 
+    // 캐시는 TTL을 길게 가져가는 대신(이슈 #57) 원본이 바뀌는 시점에 즉시 무효화해 최신성을 보장한다.
     @Transactional
     public Performance updatePerformance(Long performanceId, PerformanceUpdateRequest request) {
         Performance performance = getPerformance(performanceId);
@@ -110,6 +111,7 @@ public class PerformanceService {
                 request.genre(),
                 request.description(),
                 request.posterUrl());
+        performanceCacheRepository.evictDetail(performanceId);
         return performance;
     }
 
@@ -133,6 +135,7 @@ public class PerformanceService {
         sectionRepository.deleteAllByScheduleIdIn(scheduleIds);
         performanceScheduleRepository.deleteAllByPerformanceId(performanceId);
         performanceRepository.delete(performance);
+        performanceCacheRepository.evictDetail(performanceId);
     }
 
     @Transactional(readOnly = true)
