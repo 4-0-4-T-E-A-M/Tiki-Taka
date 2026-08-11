@@ -41,3 +41,37 @@
     프롬프트에 그 사실관계를 먼저 알려줄 것 — 코드만 봐서는 알 수 없는 부분
 5. Kafka 이벤트 스키마를 바꾸는 경우에만 Consumer 담당자(조준형)에게 공유 — 그 외 Consumer
    로직에는 손대지 말 것
+
+## 작업 로그 (PR 올리기 전 임시 정리)
+
+### 이슈 #34 — Redisson 분산 락 구현 (구현 완료, PR 대기 중)
+- 브랜치: `feature/34-feat-redisson-분산락-구현`. 처음엔 `develop`에 아직 없던 #33 인프라
+  때문에 `feature/33` 위에서 분기했다가, #33이 `develop`에 머지된 뒤 `git rebase --onto
+  origin/develop feature/33-... feature/34-...`로 `#34` 커밋 하나만 `develop` 최신 위로 옮김
+  (`build.gradle`에서 develop 쪽 OAuth 관련 의존성과 충돌 나서 수동 병합함).
+- 변경 파일: `build.gradle`(redisson 3.40.2 + testcontainers 테스트 의존성),
+  `application.yaml`(`spring.data.redis.host/port`), `booking/config/RedissonConfig.java`(신규),
+  `ReservationService.java`(락 통합), `ReservationServiceTest.java`(RLock mock 추가),
+  `ReservationConcurrencyTest.java`(신규, Testcontainers 기반),
+  `src/test/resources/application.yaml`(테스트용 `spring.data.redis.host/port` 추가)
+- 주요 설계 결정
+  - 락 키 `seat-lock:{seatId}`, `waitTime=0`(즉시 실패) / `leaseTime=3초`
+  - 좌석 여러 개 요청 시 seatId 정렬 후 순서대로 락 획득(데드락 방지)
+  - 락 해제는 `finally`가 아니라 `TransactionSynchronizationManager`의 `afterCompletion`에 등록 —
+    `@Transactional` 프록시의 실제 커밋이 메서드 리턴 *이후*에 일어나므로, 단순 `finally` 언락은
+    "커밋 전에 락이 풀리는" 레이스를 만들어 #35가 요구하는 "성공 정확히 1건"이 깨질 수 있음.
+    관리되는 트랜잭션이 없는 호출(단위 테스트 등)에서는 즉시 해제로 폴백
+  - 락 실패 응답은 기존 스타일대로 커스텀 예외 없이 `ResponseStatusException(CONFLICT)`
+- 테스트 범위 분담: 이번 이슈에는 "2스레드 동시 요청 → 성공 1건/충돌 1건" 최소 검증만 포함.
+  100명 규모 시나리오·최종 DB 상태 정합성·실패 응답 폭넓은 케이스는 이슈 #35에서 이어감
+- 검증: `ReservationServiceTest`, `ReservationConcurrencyTest`, 베이스라인 `TikitakaApplicationTests`
+  모두 `./gradlew test` 통과 (로컬에 `docker compose up -d`로 postgres/redis 필요)
+
+### 발견한 기존 버그 → `src/test/resources/application.yaml`에 테스트용 기본값 추가로 해결
+`me.paulschwarz:springboot3-dotenv`가 `developmentOnly`라 `testRuntimeClasspath`에 없어서
+`./gradlew test` 실행 시 `.env`가 로드되지 않는 기존 버그가 있었음(`feature/33` 베이스에서도
+재현, 이번 PR 이전부터 있던 문제). 처음엔 `testRuntimeOnly`에도 dotenv를 추가해서 해결했었는데,
+rebase 과정에서 develop에 이미 `src/test/resources/application.yaml`(H2로 datasource 오버라이드)이
+추가된 걸 확인하고 그 패턴에 맞춰 dotenv 의존성 추가 대신 같은 파일에 `spring.data.redis.host/port`
+기본값(`localhost`/`6379`)을 넣는 쪽으로 다시 바꿈 — 테스트가 dotenv/env var에 전혀 기대지 않고
+자체 설정으로 완결되는 게 더 일관적이라고 판단.
