@@ -48,8 +48,9 @@ class ErrorResponseWriterTest {
         JsonNode json = objectMapper.readTree(response.getContentAsString());
         assertThat(json.get("code").asText()).isEqualTo("USER_001");
         assertThat(json.get("message").asText()).isEqualTo("사용자를 찾을 수 없습니다.");
-        assertThat(json.has("timestamp")).isTrue();
-        assertThat(json.get("timestamp").isNull()).isFalse();
+        assertThat(json.has("data")).isTrue();
+        assertThat(json.get("data").isNull()).isTrue();
+        assertThat(json.has("timestamp")).isFalse();
     }
 
     @Test

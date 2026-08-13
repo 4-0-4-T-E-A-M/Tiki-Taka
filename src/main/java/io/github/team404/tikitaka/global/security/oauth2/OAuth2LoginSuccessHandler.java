@@ -1,8 +1,11 @@
 package io.github.team404.tikitaka.global.security.oauth2;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.github.team404.tikitaka.global.exception.CommonErrorCode;
 import io.github.team404.tikitaka.global.exception.ErrorResponseWriter;
+import io.github.team404.tikitaka.global.response.BaseResponse;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
+import io.github.team404.tikitaka.user.dto.response.AccessTokenResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +40,7 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ErrorResponseWriter errorResponseWriter;
+    private final ObjectMapper objectMapper;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -65,9 +69,9 @@ public class OAuth2LoginSuccessHandler implements AuthenticationSuccessHandler {
         response.setStatus(HttpServletResponse.SC_OK);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-        response.getWriter().write(String.format(
-                "{\"accessToken\":\"%s\",\"tokenType\":\"Bearer\",\"accessTokenExpiresIn\":%d}",
-                accessToken, jwtTokenProvider.getAccessTokenExpiry() / 1000
-        ));
+        AccessTokenResponse tokenResponse = AccessTokenResponse.of(
+                accessToken, jwtTokenProvider.getAccessTokenExpiry());
+        objectMapper.writeValue(response.getWriter(),
+                BaseResponse.success("로그인에 성공했습니다.", tokenResponse));
     }
 }
