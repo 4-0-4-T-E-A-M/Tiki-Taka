@@ -27,6 +27,7 @@ class JwtAccessDeniedHandlerTest {
         String body = response.getContentAsString();
         assertThat(body).contains("\"code\":\"AUTH_002\"");
         assertThat(body).contains("\"message\":\"접근 권한이 없습니다.\"");
-        assertThat(body).contains("\"timestamp\"");
+        assertThat(body).contains("\"data\":null");
+        assertThat(body).doesNotContain("\"timestamp\"");
     }
 }

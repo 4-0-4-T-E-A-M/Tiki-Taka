@@ -1,6 +1,7 @@
 package io.github.team404.tikitaka.user.controller;
 
 import io.github.team404.tikitaka.global.exception.BusinessException;
+import io.github.team404.tikitaka.global.response.BaseResponse;
 import io.github.team404.tikitaka.global.security.jwt.JwtErrorCode;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.global.security.jwt.JwtValidationException;
@@ -26,7 +27,7 @@ public class AuthController {
     private final UserSignupService userSignupService;
 
     @PostMapping("/refresh")
-    public ResponseEntity<AccessTokenResponse> refresh(
+    public ResponseEntity<BaseResponse<AccessTokenResponse>> refresh(
             @CookieValue(name = "refreshToken", required = false) String refreshToken) {
         if (refreshToken == null) {
             throw new JwtValidationException(JwtErrorCode.REFRESH_TOKEN_NOT_FOUND);
@@ -39,8 +40,10 @@ public class AuthController {
                 .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId, user.getRole());
+        AccessTokenResponse response = AccessTokenResponse.of(
+                newAccessToken, jwtTokenProvider.getAccessTokenExpiry());
         return ResponseEntity.ok(
-                AccessTokenResponse.of(newAccessToken, jwtTokenProvider.getAccessTokenExpiry())
+                BaseResponse.success("액세스 토큰 재발급에 성공했습니다.", response)
         );
     }
 }
