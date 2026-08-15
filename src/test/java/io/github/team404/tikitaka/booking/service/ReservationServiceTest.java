@@ -31,6 +31,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -98,6 +99,24 @@ class ReservationServiceTest {
         assertThatThrownBy(() -> reservationService.createReservation(request))
                 .isInstanceOf(ResponseStatusException.class);
         verify(seatRepository, never()).findAllById(anyList());
+    }
+
+    @Test
+    void 락_획득_후에도_좌석_상태가_AVAILABLE이_아니면_충돌_예외로_즉시_실패한다() throws InterruptedException {
+        // given: 락은 정상적으로 획득했지만(정상 경로에선 발생하지 않아야 함) DB 상 좌석이 이미 HELD인 경우
+        Seat seat = seatOf(1L);
+        seat.hold();
+        ReservationCreateRequest request = new ReservationCreateRequest(1L, 1L, 1L, List.of(1L));
+        when(redissonClient.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+        when(seatRepository.findAllById(request.seatIds())).thenReturn(List.of(seat));
+
+        // when & then: IllegalStateException이 그대로 새지 않고 409 CONFLICT로 변환되어야 한다
+        assertThatThrownBy(() -> reservationService.createReservation(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        verify(reservationRepository, never()).save(any());
     }
 
     @Test

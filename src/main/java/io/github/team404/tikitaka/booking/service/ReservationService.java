@@ -83,7 +83,17 @@ public class ReservationService {
             if (seats.size() != seatIds.size()) {
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "존재하지 않는 좌석이 포함되어 있습니다.");
             }
-            seats.forEach(Seat::hold);
+            // 락 획득 후에도 상태를 다시 확인한다 (hold()의 상태 가드가 AVAILABLE이 아니면 예외를 던짐).
+            // 정상 경로에서는 락이 단독 접근을 보장하므로 걸리지 않아야 하지만, 걸린다면
+            // 500이 아니라 다른 실패와 동일하게 즉시 실패 응답(409)으로 알린다.
+            for (Seat seat : seats) {
+                try {
+                    seat.hold();
+                } catch (IllegalStateException e) {
+                    throw new ResponseStatusException(
+                            HttpStatus.CONFLICT, "예매할 수 없는 상태의 좌석입니다: seatId=" + seat.getId());
+                }
+            }
 
             Reservation reservation = Reservation.builder()
                     .userId(request.userId())
