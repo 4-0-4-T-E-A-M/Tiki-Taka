@@ -44,7 +44,7 @@
 
 ## 작업 로그 (PR 올리기 전 임시 정리)
 
-### 이슈 #34 — Redisson 분산 락 구현 (구현 완료, PR 대기 중)
+### 이슈 #34 — Redisson 분산 락 구현 (PR #46, `develop` 머지 완료)
 - 브랜치: `feature/34-feat-redisson-분산락-구현`. 처음엔 `develop`에 아직 없던 #33 인프라
   때문에 `feature/33` 위에서 분기했다가, #33이 `develop`에 머지된 뒤 `git rebase --onto
   origin/develop feature/33-... feature/34-...`로 `#34` 커밋 하나만 `develop` 최신 위로 옮김
@@ -76,7 +76,9 @@ rebase 과정에서 develop에 이미 `src/test/resources/application.yaml`(H2�
 기본값(`localhost`/`6379`)을 넣는 쪽으로 다시 바꿈 — 테스트가 dotenv/env var에 전혀 기대지 않고
 자체 설정으로 완결되는 게 더 일관적이라고 판단.
 
-### 이슈 #35 — 동시 예매 시나리오 테스트 (100명 동시) (구현 완료, PR 대기 중)
+
+### 이슈 #35 — 동시 예매 시나리오 테스트 (100명 동시) (PR #47, `develop` 머지 완료)
+
 - 브랜치: `feature/35-test-동시-예매-시나리오-테스트` (`#34` PR #46이 아직 미머지라 `feature/34`
   위에서 분기 — `#34`가 머지되면 `git rebase --onto origin/develop feature/34-... feature/35-...`
   로 옮길 것, `#34`→develop rebase 때와 동일한 절차)
@@ -88,3 +90,37 @@ rebase 과정에서 develop에 이미 `src/test/resources/application.yaml`(H2�
   `HELD` 1건(이슈 원문은 "RESERVED"라고 적혀 있지만 실제 코드의 임시 홀드 상태명은 `HELD`),
   `ReservationSeat` 매핑 1건
 - 검증: `./gradlew test --tests "*.ReservationConcurrencyTest"`, 전체 `./gradlew test` 모두 통과
+
+### #34/#35 PR 머지 (2026-08-11) — Week 4 이슈 #52 착수 전 정리
+`#34`(PR #46)·`#35`(PR #47)가 Week 3에 구현 완료된 채로 리뷰만 받고 `develop`에 오래 안
+올라가 있었는데, 그 사이 `develop`이 대기열 기능(#49) 머지로 한참 앞서 나가 있었음. #52
+작업을 시작하기 전에 먼저 두 PR을 `develop` 기준으로 정리해서 머지:
+- `feature/34-...`를 `origin/develop`로 rebase. `build.gradle`에 테스트용 testcontainers
+  의존성이 양쪽에서 추가되어 충돌(develop 쪽은 대기열 도메인 테스트용으로 이미
+  `testcontainers-bom`+`testcontainers`+`junit-jupiter` 조합을 추가해둔 상태, `feature/34`
+  쪽은 `spring-boot-testcontainers`를 추가했었음) — `ReservationConcurrencyTest`가
+  `@ServiceConnection` 없이 `GenericContainer`+`@Testcontainers`만 쓰므로
+  `spring-boot-testcontainers`는 불필요, develop 쪽 조합만 남기고 해결
+- rebase 후 PR #46 스쿼시 머지 → `develop`
+- `feature/35-...`를 `git rebase --onto origin/develop bea486e feature/35-...`로 옮겨서
+  `#34`와 겹치는 커밋은 버리고 100-스레드 테스트 커밋만 새 `develop` 위로 이식 (충돌 없음)
+- PR #47 base를 `feature/34-...` → `develop`로 재지정 후 스쿼시 머지
+- 이슈 #34/#35는 머지 시 자동 클로즈됨
+
+### 이슈 #52 — 예매 트랜잭션 고도화 (구현 완료)
+- 브랜치: `feature/52-예매-트랜잭션-고도화-분산락-통합` (위 정리가 끝난 `develop` 기준으로 새로 분기)
+- 이슈 본문 체크리스트를 코드와 대조한 결과, "락 획득 순서 고정", "커밋 이후 언락",
+  "락 실패 시 즉시 409" 등은 #34/#35에서 이미 구현되어 있었음. 유일하게 비어 있던 항목은
+  "락 획득 후 DB 상태 재확인 → 실패 시 즉시 실패 응답": `Seat.hold()`는 상태가 `AVAILABLE`이
+  아니면 `IllegalStateException`을 던지는데, `ReservationService.createReservation`에서
+  이를 잡지 않아 `GlobalExceptionHandler`의 `Exception` 폴백 핸들러로 떨어져 500으로 응답되고
+  있었음 — 락이 정상 동작하는 한 실제로는 거의 발생하지 않는 경로지만, 발생했을 때 스펙대로
+  "즉시 실패 응답"이 되도록 고쳐야 하는 갭이었음
+- 변경: `ReservationService.createReservation`에서 `seats.forEach(Seat::hold)`를
+  `IllegalStateException`을 잡아 `ResponseStatusException(CONFLICT)`로 변환하는 루프로 교체
+  (락 실패와 동일하게 커스텀 예외 없이 기존 스타일 유지)
+- `ReservationServiceTest`에 좌석을 미리 `HELD`로 만들어두고 락은 정상 획득한 케이스를
+  추가해, 재확인 실패가 500이 아니라 409로 응답되는지 검증
+- 검증: `./gradlew test --tests "*.ReservationServiceTest" --tests "*.TikitakaApplicationTests"`
+  통과 (Docker 미사용 환경이라 `ReservationConcurrencyTest`는 로컬에서 별도로
+  `docker compose up -d` 후 전체 `./gradlew test`로 재검증 필요)
