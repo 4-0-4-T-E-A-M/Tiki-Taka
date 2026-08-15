@@ -76,7 +76,9 @@ rebase 과정에서 develop에 이미 `src/test/resources/application.yaml`(H2�
 기본값(`localhost`/`6379`)을 넣는 쪽으로 다시 바꿈 — 테스트가 dotenv/env var에 전혀 기대지 않고
 자체 설정으로 완결되는 게 더 일관적이라고 판단.
 
+
 ### 이슈 #35 — 동시 예매 시나리오 테스트 (100명 동시) (PR #47, `develop` 머지 완료)
+
 - 브랜치: `feature/35-test-동시-예매-시나리오-테스트` (`#34` PR #46이 아직 미머지라 `feature/34`
   위에서 분기 — `#34`가 머지되면 `git rebase --onto origin/develop feature/34-... feature/35-...`
   로 옮길 것, `#34`→develop rebase 때와 동일한 절차)
