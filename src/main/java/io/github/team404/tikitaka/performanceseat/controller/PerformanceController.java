@@ -57,11 +57,7 @@ public class PerformanceController {
 
     @GetMapping("/{performanceId}")
     public ResponseEntity<BaseResponse<PerformanceDetailResponse>> get(@PathVariable Long performanceId) {
-        Performance performance = performanceService.getPerformance(performanceId);
-        List<ScheduleResponse> schedules = performanceService.getSchedules(performanceId).stream()
-                .map(ScheduleResponse::from)
-                .toList();
-        PerformanceDetailResponse response = PerformanceDetailResponse.of(performance, schedules);
+        PerformanceDetailResponse response = performanceService.getPerformanceDetail(performanceId);
         return ResponseEntity.ok(BaseResponse.success("공연 조회에 성공했습니다.", response));
     }
 }

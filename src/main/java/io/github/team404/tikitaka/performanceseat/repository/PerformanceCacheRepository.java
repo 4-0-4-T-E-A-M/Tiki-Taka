@@ -6,22 +6,34 @@ import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import java.io.UncheckedIOException;
 import java.time.Duration;
 import java.util.Optional;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Repository;
 
 // 공연 상세 조회 Cache-Aside 저장소. 공연 오픈 시점처럼 동일 공연 상세를 다수가 동시에 조회하는
 // 트래픽(이슈 #56)에 대응하기 위해 공연 ID 단위로 캐싱한다.
-// TTL·무효화(수정 시 캐시 갱신 등) 정책은 별도 이슈("캐시 TTL·무효화 전략 결정")에서 확정 예정이라,
-// 아래 TTL은 캐시가 무한정 쌓이는 것만 막는 플레이스홀더 값이며 임의로 바꿔도 다음 이슈에서 재조정된다.
+//
+// TTL·무효화 전략(이슈 #57): 인기 공연 상세는 오픈 전후로 정보가 거의 바뀌지 않는다는 특성을
+// 감안해 TTL을 길게 가져가 캐시 히트율을 우선한다(기본값 15분, tikitaka.cache.performance-detail-ttl-ms
+// 로 조정). 대신 드물게 발생하는 수정/삭제는 PerformanceService에서 evictDetail로 즉시 반영해
+// TTL을 길게 가져가는 데 따른 최신성 문제를 보완한다. 캐시 스탬피드 대응(만료 직전 갱신, 락 등)은
+// 이 캐시가 PK 단건 SELECT 미스라 DB 부담이 낮고, 실제 경합 지점(좌석 선점)은 별도 Redis 분산락이
+// 담당하므로 현재 트래픽 규모에서는 도입하지 않기로 판단했다.
 @Repository
-@RequiredArgsConstructor
 public class PerformanceCacheRepository {
-
-    private static final Duration PLACEHOLDER_TTL = Duration.ofMinutes(5);
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final Duration detailTtl;
+
+    public PerformanceCacheRepository(
+            StringRedisTemplate redisTemplate,
+            ObjectMapper objectMapper,
+            @Value("${tikitaka.cache.performance-detail-ttl-ms}") long detailTtlMillis) {
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
+        this.detailTtl = Duration.ofMillis(detailTtlMillis);
+    }
 
     private String detailKey(Long performanceId) {
         return "performance:detail:%d".formatted(performanceId);
@@ -42,9 +54,13 @@ public class PerformanceCacheRepository {
     public void saveDetail(Long performanceId, PerformanceDetailResponse detail) {
         try {
             String json = objectMapper.writeValueAsString(detail);
-            redisTemplate.opsForValue().set(detailKey(performanceId), json, PLACEHOLDER_TTL);
+            redisTemplate.opsForValue().set(detailKey(performanceId), json, detailTtl);
         } catch (JsonProcessingException e) {
             throw new UncheckedIOException(e);
         }
+    }
+
+    public void evictDetail(Long performanceId) {
+        redisTemplate.delete(detailKey(performanceId));
     }
 }

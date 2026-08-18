@@ -13,6 +13,7 @@ import io.github.team404.tikitaka.booking.repository.ReservationRepository;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceUpdateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.ScheduleCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.SectionCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.SeatRowRequest;
@@ -84,6 +85,23 @@ class PerformanceServiceTest {
     }
 
     @Test
+    void 공연_수정시_상세_캐시를_무효화한다() {
+        // given
+        Performance performance = performanceOf();
+        PerformanceUpdateRequest request = new PerformanceUpdateRequest(
+                "수정된 콘서트", "아이유", "체조경기장", PerformanceRegion.SEOUL, PerformanceGenre.CONCERT,
+                "수정된 설명", "poster2.png");
+        when(performanceRepository.findById(1L)).thenReturn(Optional.of(performance));
+
+        // when
+        performanceService.updatePerformance(1L, request);
+
+        // then
+        assertThat(performance.getTitle()).isEqualTo("수정된 콘서트");
+        verify(performanceCacheRepository, times(1)).evictDetail(1L);
+    }
+
+    @Test
     void 삭제시_예매가_존재하면_예외가_발생한다() {
         // given
         Performance performance = performanceOf();
@@ -96,6 +114,7 @@ class PerformanceServiceTest {
         assertThatThrownBy(() -> performanceService.deletePerformance(1L))
                 .isInstanceOf(ResponseStatusException.class);
         verify(performanceRepository, never()).delete(any());
+        verify(performanceCacheRepository, never()).evictDetail(any());
     }
 
     @Test
@@ -117,6 +136,7 @@ class PerformanceServiceTest {
         verify(sectionRepository, times(1)).deleteAllByScheduleIdIn(List.of(10L));
         verify(performanceScheduleRepository, times(1)).deleteAllByPerformanceId(1L);
         verify(performanceRepository, times(1)).delete(performance);
+        verify(performanceCacheRepository, times(1)).evictDetail(1L);
     }
 
     @Test
