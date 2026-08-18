@@ -35,11 +35,14 @@ class OAuth2LoginSuccessHandlerTest {
     @Mock
     private JwtTokenProvider jwtTokenProvider;
 
+    private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
+
     private OAuth2LoginSuccessHandler successHandler;
 
     @BeforeEach
     void setUp() {
-        successHandler = new OAuth2LoginSuccessHandler(jwtTokenProvider, new ErrorResponseWriter(new ObjectMapper().findAndRegisterModules()));
+        successHandler = new OAuth2LoginSuccessHandler(
+                jwtTokenProvider, new ErrorResponseWriter(objectMapper), objectMapper);
     }
 
     @Test
@@ -60,8 +63,15 @@ class OAuth2LoginSuccessHandlerTest {
         // then
         assertThat(response.getStatus()).isEqualTo(200);
         @SuppressWarnings("unchecked")
-        Map<String, Object> body = new ObjectMapper().readValue(response.getContentAsString(), Map.class);
-        assertThat(body.get("accessToken")).isEqualTo(ACCESS_TOKEN);
+        Map<String, Object> body = objectMapper.readValue(response.getContentAsString(), Map.class);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> data = (Map<String, Object>) body.get("data");
+        assertThat(body.get("code")).isEqualTo("SUCCESS");
+        assertThat(body.get("message")).isEqualTo("로그인에 성공했습니다.");
+        assertThat(data.get("accessToken")).isEqualTo(ACCESS_TOKEN);
+        assertThat(data.get("tokenType")).isEqualTo("Bearer");
+        assertThat(data.get("accessTokenExpiresIn")).isEqualTo(3600);
+        assertThat(body).doesNotContainKey("accessToken");
         assertThat(body).doesNotContainKey("refreshToken");
     }
 

@@ -35,3 +35,11 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiry: ${JWT_ACCESS_TOKEN_EXPIRY:3600000}
   refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:604800000}
+
+queue:
+  sse:
+    # 대기열 순번 재조회 주기 — 커넥션 전체를 순회하는 단일 스케줄 태스크의 간격
+    poll-interval-ms: 1000
+    # SSE 커넥션 타임아웃(ms). 끊기면 클라이언트가 표준 SSE 재연결을 시도하고,
+    # 재연결 시에도 Redis ZSET 순번은 그대로 남아있어 유실 없이 최초 1회 push로 복구된다.
+    timeout-ms: 300000

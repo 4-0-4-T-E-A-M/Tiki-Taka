@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.nullValue;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -25,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 /**
  * GlobalExceptionHandler가 실제 요청/응답을 통해 공통 오류 응답 포맷
- * ({code, message, timestamp})을 만들어내는지 검증한다.
+ * ({code, message, data})을 만들어내는지 검증한다.
  * Security 경로 접근 제어와는 무관하므로 필터는 비활성화한다.
  * 검증 대상 컨트롤러가 아직 실제로 존재하지 않아, 이 테스트에서만 쓰는 컨트롤러를
  * 추가 소스로 등록해 재현한다(SecurityFilterChainTest와 동일한 방식).
@@ -43,7 +44,8 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_001"))
                 .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -54,7 +56,8 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_001"))
                 .andExpect(jsonPath("$.message").value("이름은 비어 있을 수 없습니다."))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -65,7 +68,8 @@ class GlobalExceptionHandlerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COMMON_002"))
                 .andExpect(jsonPath("$.message").exists())
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -73,7 +77,8 @@ class GlobalExceptionHandlerTest {
         mockMvc.perform(get("/test/exception/validate"))
                 .andExpect(status().isMethodNotAllowed())
                 .andExpect(jsonPath("$.code").value("COMMON_003"))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @Test
@@ -83,7 +88,8 @@ class GlobalExceptionHandlerTest {
                 .andExpect(jsonPath("$.code").value("COMMON_500"))
                 .andExpect(jsonPath("$.message").value("서버 내부 오류가 발생했습니다."))
                 .andExpect(jsonPath("$.message", not(containsString("boom"))))
-                .andExpect(jsonPath("$.timestamp").exists());
+                .andExpect(jsonPath("$.data").value(nullValue()))
+                .andExpect(jsonPath("$.timestamp").doesNotExist());
     }
 
     @RestController
