@@ -1,6 +1,8 @@
 package io.github.team404.tikitaka.performanceseat.controller;
 
 import io.github.team404.tikitaka.global.security.jwt.JwtAuthenticationFilter;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
+import io.github.team404.tikitaka.performanceseat.dto.ScheduleResponse;
 import io.github.team404.tikitaka.performanceseat.entity.Performance;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceGenre;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceRegion;
@@ -99,8 +101,8 @@ class PerformanceControllerTest {
     void 공연_상세를_공통_성공_응답으로_조회한다() throws Exception {
         Performance performance = performance(1L, "공연 제목");
         PerformanceSchedule schedule = schedule(11L);
-        given(performanceService.getPerformance(1L)).willReturn(performance);
-        given(performanceService.getSchedules(1L)).willReturn(List.of(schedule));
+        PerformanceDetailResponse detail = PerformanceDetailResponse.of(performance, List.of(ScheduleResponse.from(schedule)));
+        given(performanceService.getPerformanceDetail(1L)).willReturn(detail);
 
         mockMvc.perform(get("/api/performances/1"))
                 .andExpect(status().isOk())
