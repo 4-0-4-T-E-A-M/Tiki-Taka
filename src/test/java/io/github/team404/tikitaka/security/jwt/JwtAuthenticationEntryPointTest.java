@@ -27,6 +27,7 @@ class JwtAuthenticationEntryPointTest {
         String body = response.getContentAsString();
         assertThat(body).contains("\"code\":\"AUTH_001\"");
         assertThat(body).contains("\"message\":\"인증이 필요합니다.\"");
-        assertThat(body).contains("\"timestamp\"");
+        assertThat(body).contains("\"data\":null");
+        assertThat(body).doesNotContain("\"timestamp\"");
     }
 }

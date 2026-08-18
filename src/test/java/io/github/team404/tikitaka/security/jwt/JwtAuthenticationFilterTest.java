@@ -95,7 +95,11 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(requestWithBearer("no-role-token"), response, chain);
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("토큰에 권한 정보가 없습니다.");
+        assertThat(response.getContentAsString())
+                .contains("\"code\":\"AUTH_110\"")
+                .contains("토큰에 권한 정보가 없습니다.")
+                .contains("\"data\":null")
+                .doesNotContain("\"timestamp\"");
         assertThat(chain.called.get()).isFalse();
     }
 
@@ -109,7 +113,11 @@ class JwtAuthenticationFilterTest {
         filter.doFilter(requestWithBearer("bad-role-token"), response, chain);
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("지원하지 않는 권한입니다.");
+        assertThat(response.getContentAsString())
+                .contains("\"code\":\"AUTH_111\"")
+                .contains("지원하지 않는 권한입니다.")
+                .contains("\"data\":null")
+                .doesNotContain("\"timestamp\"");
         assertThat(chain.called.get()).isFalse();
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
@@ -153,7 +161,11 @@ class JwtAuthenticationFilterTest {
 
         assertThat(chain.called.get()).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("토큰이 비어 있습니다.");
+        assertThat(response.getContentAsString())
+                .contains("\"code\":\"AUTH_105\"")
+                .contains("토큰이 비어 있습니다.")
+                .contains("\"data\":null")
+                .doesNotContain("\"timestamp\"");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
@@ -170,7 +182,11 @@ class JwtAuthenticationFilterTest {
 
         assertThat(chain.called.get()).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("Access Token이 아닙니다.");
+        assertThat(response.getContentAsString())
+                .contains("\"code\":\"AUTH_102\"")
+                .contains("Access Token이 아닙니다.")
+                .contains("\"data\":null")
+                .doesNotContain("\"timestamp\"");
         assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
     }
 
@@ -187,7 +203,11 @@ class JwtAuthenticationFilterTest {
 
         assertThat(chain.called.get()).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("만료된 토큰입니다.");
+        assertThat(response.getContentAsString())
+                .contains("\"code\":\"AUTH_106\"")
+                .contains("만료된 토큰입니다.")
+                .contains("\"data\":null")
+                .doesNotContain("\"timestamp\"");
     }
 
     @Test
@@ -203,7 +223,11 @@ class JwtAuthenticationFilterTest {
 
         assertThat(chain.called.get()).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).contains("유효하지 않은 토큰입니다.");
+        assertThat(response.getContentAsString())
+                .contains("\"code\":\"AUTH_107\"")
+                .contains("유효하지 않은 토큰입니다.")
+                .contains("\"data\":null")
+                .doesNotContain("\"timestamp\"");
     }
 
     /**

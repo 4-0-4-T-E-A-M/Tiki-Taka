@@ -4,6 +4,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -21,11 +23,15 @@ import io.github.team404.tikitaka.performanceseat.repository.SeatRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,15 +46,23 @@ class ReservationServiceTest {
     @Mock
     private SeatRepository seatRepository;
 
+    @Mock
+    private RedissonClient redissonClient;
+
+    @Mock
+    private RLock rLock;
+
     @InjectMocks
     private ReservationService reservationService;
 
     @Test
-    void 예매_생성시_선택한_좌석을_모두_HELD로_전이한다() {
+    void 예매_생성시_선택한_좌석을_모두_HELD로_전이한다() throws InterruptedException {
         // given
         Seat seat1 = seatOf(1L);
         Seat seat2 = seatOf(2L);
         ReservationCreateRequest request = new ReservationCreateRequest(1L, 1L, 1L, List.of(1L, 2L));
+        when(redissonClient.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         when(seatRepository.findAllById(request.seatIds())).thenReturn(List.of(seat1, seat2));
 
         // when
@@ -63,9 +77,11 @@ class ReservationServiceTest {
     }
 
     @Test
-    void 존재하지_않는_좌석이_포함되면_예외가_발생한다() {
+    void 존재하지_않는_좌석이_포함되면_예외가_발생한다() throws InterruptedException {
         // given
         ReservationCreateRequest request = new ReservationCreateRequest(1L, 1L, 1L, List.of(1L, 2L));
+        when(redissonClient.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
         when(seatRepository.findAllById(request.seatIds())).thenReturn(List.of(seatOf(1L)));
 
         // when & then
@@ -83,6 +99,24 @@ class ReservationServiceTest {
         assertThatThrownBy(() -> reservationService.createReservation(request))
                 .isInstanceOf(ResponseStatusException.class);
         verify(seatRepository, never()).findAllById(anyList());
+    }
+
+    @Test
+    void 락_획득_후에도_좌석_상태가_AVAILABLE이_아니면_충돌_예외로_즉시_실패한다() throws InterruptedException {
+        // given: 락은 정상적으로 획득했지만(정상 경로에선 발생하지 않아야 함) DB 상 좌석이 이미 HELD인 경우
+        Seat seat = seatOf(1L);
+        seat.hold();
+        ReservationCreateRequest request = new ReservationCreateRequest(1L, 1L, 1L, List.of(1L));
+        when(redissonClient.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+        when(seatRepository.findAllById(request.seatIds())).thenReturn(List.of(seat));
+
+        // when & then: IllegalStateException이 그대로 새지 않고 409 CONFLICT로 변환되어야 한다
+        assertThatThrownBy(() -> reservationService.createReservation(request))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.CONFLICT);
+        verify(reservationRepository, never()).save(any());
     }
 
     @Test

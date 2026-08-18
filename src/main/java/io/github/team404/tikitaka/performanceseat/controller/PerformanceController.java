@@ -1,5 +1,6 @@
 package io.github.team404.tikitaka.performanceseat.controller;
 
+import io.github.team404.tikitaka.global.response.BaseResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse;
@@ -26,32 +27,37 @@ public class PerformanceController {
     private final PerformanceService performanceService;
 
     @PostMapping
-    public ResponseEntity<PerformanceResponse> create(@RequestBody PerformanceCreateRequest request) {
+    public ResponseEntity<BaseResponse<PerformanceResponse>> create(@RequestBody PerformanceCreateRequest request) {
         PerformanceResponse response = PerformanceResponse.from(performanceService.createPerformance(request));
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(BaseResponse.success("공연 생성에 성공했습니다.", response));
     }
 
     @PutMapping("/{performanceId}")
-    public PerformanceResponse update(
+    public ResponseEntity<BaseResponse<PerformanceResponse>> update(
             @PathVariable Long performanceId, @RequestBody PerformanceUpdateRequest request) {
-        return PerformanceResponse.from(performanceService.updatePerformance(performanceId, request));
+        PerformanceResponse response = PerformanceResponse.from(
+                performanceService.updatePerformance(performanceId, request));
+        return ResponseEntity.ok(BaseResponse.success("공연 수정에 성공했습니다.", response));
     }
 
     @DeleteMapping("/{performanceId}")
-    public ResponseEntity<Void> delete(@PathVariable Long performanceId) {
+    public ResponseEntity<BaseResponse<Void>> delete(@PathVariable Long performanceId) {
         performanceService.deletePerformance(performanceId);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok(BaseResponse.success("공연 삭제에 성공했습니다."));
     }
 
     @GetMapping
-    public List<PerformanceResponse> list() {
-        return performanceService.listPerformances().stream()
+    public ResponseEntity<BaseResponse<List<PerformanceResponse>>> list() {
+        List<PerformanceResponse> responses = performanceService.listPerformances().stream()
                 .map(PerformanceResponse::from)
                 .toList();
+        return ResponseEntity.ok(BaseResponse.success("공연 목록 조회에 성공했습니다.", responses));
     }
 
     @GetMapping("/{performanceId}")
-    public PerformanceDetailResponse get(@PathVariable Long performanceId) {
-        return performanceService.getPerformanceDetail(performanceId);
+    public ResponseEntity<BaseResponse<PerformanceDetailResponse>> get(@PathVariable Long performanceId) {
+        PerformanceDetailResponse response = performanceService.getPerformanceDetail(performanceId);
+        return ResponseEntity.ok(BaseResponse.success("공연 조회에 성공했습니다.", response));
     }
 }

@@ -36,7 +36,8 @@ class OAuth2LoginFailureHandlerTest {
         String body = response.getContentAsString();
         assertThat(body).contains("\"code\":\"" + JwtErrorCode.OAUTH2_AUTHENTICATION_FAILED.getCode() + "\"");
         assertThat(body).contains("\"message\":\"" + JwtErrorCode.OAUTH2_AUTHENTICATION_FAILED.getMessage() + "\"");
-        assertThat(body).contains("\"timestamp\"");
+        assertThat(body).contains("\"data\":null");
+        assertThat(body).doesNotContain("\"timestamp\"");
         assertThat(body).doesNotContain("실제 원인은 응답에 노출되면 안 됨");
     }
 }
