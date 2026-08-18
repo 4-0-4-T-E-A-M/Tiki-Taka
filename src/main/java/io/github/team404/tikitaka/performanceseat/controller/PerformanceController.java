@@ -5,8 +5,6 @@ import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceUpdateRequest;
-import io.github.team404.tikitaka.performanceseat.dto.ScheduleResponse;
-import io.github.team404.tikitaka.performanceseat.entity.Performance;
 import io.github.team404.tikitaka.performanceseat.service.PerformanceService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

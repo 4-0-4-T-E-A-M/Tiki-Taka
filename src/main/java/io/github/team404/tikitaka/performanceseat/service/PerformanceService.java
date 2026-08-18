@@ -2,14 +2,17 @@ package io.github.team404.tikitaka.performanceseat.service;
 
 import io.github.team404.tikitaka.booking.repository.ReservationRepository;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceUpdateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.ScheduleCreateRequest;
+import io.github.team404.tikitaka.performanceseat.dto.ScheduleResponse;
 import io.github.team404.tikitaka.performanceseat.dto.SectionCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.SeatRowRequest;
 import io.github.team404.tikitaka.performanceseat.entity.Performance;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.entity.Section;
+import io.github.team404.tikitaka.performanceseat.repository.PerformanceCacheRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceScheduleRepository;
 import io.github.team404.tikitaka.performanceseat.repository.SeatRepository;
@@ -30,6 +33,7 @@ public class PerformanceService {
     private final SectionRepository sectionRepository;
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
+    private final PerformanceCacheRepository performanceCacheRepository;
 
     @Transactional
     public Performance createPerformance(PerformanceCreateRequest request) {
@@ -146,5 +150,23 @@ public class PerformanceService {
     @Transactional(readOnly = true)
     public List<Performance> listPerformances() {
         return performanceRepository.findAll();
+    }
+
+    // 공연 상세 조회 Cache-Aside 진입점. 공연 오픈 시점 동시 상세 조회 트래픽이 대상이라 회차 목록까지
+    // 묶어 캐싱한다(캐시 대상 범위 근거는 이슈 #56 참고).
+    @Transactional(readOnly = true)
+    public PerformanceDetailResponse getPerformanceDetail(Long performanceId) {
+        return performanceCacheRepository.findDetail(performanceId)
+                .orElseGet(() -> loadAndCacheDetail(performanceId));
+    }
+
+    private PerformanceDetailResponse loadAndCacheDetail(Long performanceId) {
+        Performance performance = getPerformance(performanceId);
+        List<ScheduleResponse> schedules = getSchedules(performanceId).stream()
+                .map(ScheduleResponse::from)
+                .toList();
+        PerformanceDetailResponse detail = PerformanceDetailResponse.of(performance, schedules);
+        performanceCacheRepository.saveDetail(performanceId, detail);
+        return detail;
     }
 }
