@@ -2,12 +2,20 @@ package io.github.team404.tikitaka.userTest.Repository;
 
 import io.github.team404.tikitaka.user.domain.OAuthProvider;
 import io.github.team404.tikitaka.user.domain.User;
+import io.github.team404.tikitaka.user.domain.UserRole;
 import io.github.team404.tikitaka.user.repository.UserRepository;
+import io.github.team404.tikitaka.user.repository.UserSearchCondition;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -18,6 +26,160 @@ class UserRepositoryTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    private User googleUser;
+    private User googleAdmin;
+    private User anotherGoogleUser;
+
+    @BeforeEach
+    void setUp() {
+        googleUser = createGoogleUser(
+                "junhyung@gmail.com",
+                "김준형",
+                "google-search-user-1"
+        );
+        withCreatedAt(googleUser, LocalDateTime.of(2026, 8, 16, 12, 0));
+
+        googleAdmin = createGoogleUser(
+                "admin@gmail.com",
+                "이준",
+                "google-search-user-2"
+        );
+        googleAdmin.updateRole(UserRole.ADMIN);
+        withCreatedAt(googleAdmin, LocalDateTime.of(2026, 8, 17, 12, 0));
+
+        anotherGoogleUser = createGoogleUser(
+                "minsu@gmail.com",
+                "박민수",
+                "google-search-user-3"
+        );
+        withCreatedAt(anotherGoogleUser, LocalDateTime.of(2026, 8, 18, 12, 0));
+
+        userRepository.saveAllAndFlush(List.of(googleUser, googleAdmin, anotherGoogleUser));
+    }
+
+    @Test
+    void 검색_조건이_모두_없으면_전체_유저를_조회한다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(null, null, null, null);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getContent()).containsExactly(anotherGoogleUser, googleAdmin, googleUser);
+    }
+
+    @Test
+    void email은_정확히_일치하는_유저만_조회한다() {
+        // given
+        UserSearchCondition exactCondition =
+                new UserSearchCondition("junhyung@gmail.com", null, null, null);
+        UserSearchCondition partialCondition =
+                new UserSearchCondition("junhyung", null, null, null);
+
+        // when
+        Page<User> exactResult = userRepository.search(exactCondition, PageRequest.of(0, 10));
+        Page<User> partialResult = userRepository.search(partialCondition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(exactResult.getContent()).containsExactly(googleUser);
+        assertThat(partialResult).isEmpty();
+    }
+
+    @Test
+    void name에_검색어가_포함된_유저를_조회한다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(null, "준", null, null);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getContent()).containsExactly(googleAdmin, googleUser);
+    }
+
+    @Test
+    void role이_일치하는_유저를_조회한다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(null, null, UserRole.USER, null);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getContent()).containsExactly(anotherGoogleUser, googleUser);
+    }
+
+    @Test
+    void provider가_일치하는_유저를_조회한다() {
+        // given
+        UserSearchCondition condition =
+                new UserSearchCondition(null, null, null, OAuthProvider.GOOGLE);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getContent()).containsExactly(anotherGoogleUser, googleAdmin, googleUser);
+    }
+
+    @Test
+    void 여러_검색_조건을_AND로_조합한다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(
+                null,
+                "준",
+                UserRole.USER,
+                OAuthProvider.GOOGLE
+        );
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getContent()).containsExactly(googleUser);
+    }
+
+    @Test
+    void null인_조건은_무시하고_나머지_조건만_적용한다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(null, "준", null, null);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getContent()).containsExactly(googleAdmin, googleUser);
+    }
+
+    @Test
+    void blank인_문자열_조건은_무시한다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(" ", "\t", null, null);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 10));
+
+        // then
+        assertThat(result.getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void 결과는_생성순_내림차순으로_정렬되고_페이징된다() {
+        // given
+        UserSearchCondition condition = new UserSearchCondition(null, null, null, null);
+
+        // when
+        Page<User> result = userRepository.search(condition, PageRequest.of(0, 2));
+
+        // then
+        assertThat(result.getContent()).containsExactly(anotherGoogleUser, googleAdmin);
+        assertThat(result.getSize()).isEqualTo(2);
+        assertThat(result.getTotalElements()).isEqualTo(3);
+        assertThat(result.getTotalPages()).isEqualTo(2);
+    }
 
     @Test
     void 이메일로_유저를_조회할_수_있다() {
@@ -226,5 +388,9 @@ class UserRepositoryTest {
             String providerId
     ) {
         return new User(email, name, OAuthProvider.GOOGLE, providerId);
+    }
+
+    private void withCreatedAt(User user, LocalDateTime createdAt) {
+        ReflectionTestUtils.setField(user, "createdAt", createdAt);
     }
 }
