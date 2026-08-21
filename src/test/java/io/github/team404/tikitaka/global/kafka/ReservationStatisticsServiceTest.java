@@ -31,71 +31,59 @@ class ReservationStatisticsServiceTest {
     private ReservationStatisticsRepository reservationStatisticsRepository;
 
     @Test
-    void 최초_CONFIRMED_이벤트를_처리하면_처리기록과_통계가_저장된다() {
-        UUID eventId = eventId(1);
+    void 모든_예약_상태_이벤트를_상태별로_집계한다() {
+        process(1, ReservationStatus.PENDING_PAYMENT);
+        process(2, ReservationStatus.CONFIRMED);
+        process(3, ReservationStatus.FAILED);
+        process(4, ReservationStatus.EXPIRED);
+        process(5, ReservationStatus.CANCELED);
 
-        reservationStatisticsService.process(confirmedEvent(eventId, SCHEDULE_ID));
-
-        assertThat(processedEventRepository.existsById(eventId)).isTrue();
         ReservationStatistics statistics =
                 reservationStatisticsRepository.findById(SCHEDULE_ID).orElseThrow();
+        assertThat(statistics.getPendingPaymentCount()).isEqualTo(1L);
         assertThat(statistics.getConfirmedCount()).isEqualTo(1L);
-        assertThat(statistics.getUpdatedAt()).isNotNull();
+        assertThat(statistics.getFailedCount()).isEqualTo(1L);
+        assertThat(statistics.getExpiredCount()).isEqualTo(1L);
+        assertThat(statistics.getCanceledCount()).isEqualTo(1L);
+        assertThat(processedEventRepository.count()).isEqualTo(5L);
     }
 
     @Test
-    void 동일한_eventId를_재처리해도_통계가_중복_증가하지_않는다() {
-        UUID eventId = eventId(2);
-        ReservationEvent event = confirmedEvent(eventId, SCHEDULE_ID);
+    void 동일한_FAILED_eventId를_재처리해도_중복_집계하지_않는다() {
+        ReservationEvent event = event(6, ReservationStatus.FAILED);
 
         reservationStatisticsService.process(event);
         reservationStatisticsService.process(event);
 
+        ReservationStatistics statistics =
+                reservationStatisticsRepository.findById(SCHEDULE_ID).orElseThrow();
+        assertThat(statistics.getFailedCount()).isEqualTo(1L);
         assertThat(processedEventRepository.count()).isEqualTo(1L);
-        assertThat(reservationStatisticsRepository.findById(SCHEDULE_ID).orElseThrow()
-                .getConfirmedCount()).isEqualTo(1L);
     }
 
     @Test
-    void 서로_다른_eventId가_같은_scheduleId로_들어오면_통계가_각각_증가한다() {
-        reservationStatisticsService.process(confirmedEvent(eventId(3), SCHEDULE_ID));
-        reservationStatisticsService.process(confirmedEvent(eventId(4), SCHEDULE_ID));
+    void 서로_다른_FAILED_eventId는_각각_집계한다() {
+        reservationStatisticsService.process(event(7, ReservationStatus.FAILED));
+        reservationStatisticsService.process(event(8, ReservationStatus.FAILED));
 
+        ReservationStatistics statistics =
+                reservationStatisticsRepository.findById(SCHEDULE_ID).orElseThrow();
+        assertThat(statistics.getFailedCount()).isEqualTo(2L);
         assertThat(processedEventRepository.count()).isEqualTo(2L);
-        assertThat(reservationStatisticsRepository.findById(SCHEDULE_ID).orElseThrow()
-                .getConfirmedCount()).isEqualTo(2L);
     }
 
-    @Test
-    void CONFIRMED가_아닌_이벤트는_처리하지_않는다() {
-        UUID eventId = eventId(5);
-        ReservationEvent event = new ReservationEvent(
-                eventId,
+    private void process(int eventId, ReservationStatus status) {
+        reservationStatisticsService.process(event(eventId, status));
+    }
+
+    private ReservationEvent event(int eventId, ReservationStatus status) {
+        return new ReservationEvent(
+                UUID.fromString("00000000-0000-0000-0000-0000000000" + String.format("%02d", eventId)),
                 1L,
                 2L,
                 SCHEDULE_ID,
-                ReservationStatus.CANCELED,
+                status,
                 LocalDateTime.of(2026, 8, 21, 12, 0)
         );
-
-        reservationStatisticsService.process(event);
-
-        assertThat(processedEventRepository.existsById(eventId)).isFalse();
-        assertThat(reservationStatisticsRepository.findById(SCHEDULE_ID)).isEmpty();
-    }
-
-    private ReservationEvent confirmedEvent(UUID eventId, Long scheduleId) {
-        return new ReservationEvent(
-                eventId,
-                1L,
-                2L,
-                scheduleId,
-                ReservationStatus.CONFIRMED,
-                LocalDateTime.of(2026, 8, 21, 12, 0)
-        );
-    }
-
-    private UUID eventId(int value) {
-        return UUID.fromString("00000000-0000-0000-0000-00000000000" + value);
     }
 }

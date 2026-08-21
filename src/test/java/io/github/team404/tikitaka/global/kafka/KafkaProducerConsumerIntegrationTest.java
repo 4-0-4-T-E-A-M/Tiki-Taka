@@ -128,22 +128,35 @@ class KafkaProducerConsumerIntegrationTest {
     }
 
     @Test
-    void CONFIRMED가_아닌_이벤트는_통계에_반영하지_않는다() {
-        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000005");
-        ReservationEvent event = new ReservationEvent(
-                eventId,
-                1L,
-                10L,
-                103L,
-                ReservationStatus.CANCELED,
-                LocalDateTime.of(2026, 8, 18, 12, 30)
-        );
+    void 모든_예약_상태_이벤트가_상태별로_집계된다() {
+        ReservationEvent[] events = {
+                statusEvent(5, ReservationStatus.PENDING_PAYMENT),
+                statusEvent(6, ReservationStatus.CONFIRMED),
+                statusEvent(7, ReservationStatus.FAILED),
+                statusEvent(8, ReservationStatus.EXPIRED),
+                statusEvent(9, ReservationStatus.CANCELED)
+        };
 
-        kafkaEventProducer.send(event);
+        for (ReservationEvent event : events) {
+            kafkaEventProducer.send(event);
+        }
 
-        verify(kafkaEventConsumer, timeout(10_000)).consume(event);
-        assertThat(processedEventRepository.existsById(eventId)).isFalse();
-        assertThat(reservationStatisticsRepository.findById(103L)).isEmpty();
+        for (ReservationEvent event : events) {
+            verify(kafkaEventConsumer, timeout(10_000)).consume(event);
+        }
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            for (ReservationEvent event : events) {
+                assertThat(processedEventRepository.existsById(event.eventId())).isTrue();
+            }
+
+            var statistics = reservationStatisticsRepository.findById(103L).orElseThrow();
+            assertThat(statistics.getPendingPaymentCount()).isEqualTo(1L);
+            assertThat(statistics.getConfirmedCount()).isEqualTo(1L);
+            assertThat(statistics.getFailedCount()).isEqualTo(1L);
+            assertThat(statistics.getExpiredCount()).isEqualTo(1L);
+            assertThat(statistics.getCanceledCount()).isEqualTo(1L);
+        });
     }
 
     private ReservationEvent confirmedEvent(UUID eventId, Long scheduleId) {
@@ -153,6 +166,18 @@ class KafkaProducerConsumerIntegrationTest {
                 10L,
                 scheduleId,
                 ReservationStatus.CONFIRMED,
+                LocalDateTime.of(2026, 8, 18, 12, 30)
+        );
+    }
+
+    private ReservationEvent statusEvent(int eventId, ReservationStatus status) {
+        return new ReservationEvent(
+                UUID.fromString("00000000-0000-0000-0000-0000000000"
+                        + String.format("%02d", eventId)),
+                1L,
+                10L,
+                103L,
+                status,
                 LocalDateTime.of(2026, 8, 18, 12, 30)
         );
     }

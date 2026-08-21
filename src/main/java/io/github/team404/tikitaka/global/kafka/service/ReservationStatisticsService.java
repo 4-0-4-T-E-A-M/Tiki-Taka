@@ -1,6 +1,5 @@
 package io.github.team404.tikitaka.global.kafka.service;
 
-import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.global.kafka.entity.ProcessedEvent;
 import io.github.team404.tikitaka.global.kafka.entity.ReservationStatistics;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
@@ -20,10 +19,6 @@ public class ReservationStatisticsService {
 
     @Transactional
     public void process(ReservationEvent event) {
-        if (event.status() != ReservationStatus.CONFIRMED) {
-            return;
-        }
-
         if (processedEventRepository.existsById(event.eventId())) {
             return;
         }
@@ -38,11 +33,15 @@ public class ReservationStatisticsService {
         ReservationStatistics statistics = reservationStatisticsRepository.findById(event.scheduleId())
                 .orElseGet(() -> ReservationStatistics.builder()
                         .scheduleId(event.scheduleId())
+                        .pendingPaymentCount(0L)
                         .confirmedCount(0L)
+                        .failedCount(0L)
+                        .expiredCount(0L)
+                        .canceledCount(0L)
                         .updatedAt(now)
                         .build());
 
-        statistics.increaseConfirmedCount(now);
+        statistics.increase(event.status(), now);
         reservationStatisticsRepository.save(statistics);
     }
 }
