@@ -10,6 +10,7 @@ import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.producer.KafkaEventProducer;
 import io.github.team404.tikitaka.global.kafka.topic.KafkaTopics;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -43,7 +44,9 @@ class KafkaProducerConsumerIntegrationTest {
 
     @Test
     void producer가_전송한_예약_이벤트를_consumer가_수신한다() {
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000001");
         ReservationEvent event = new ReservationEvent(
+                eventId,
                 1L,
                 10L,
                 100L,
@@ -55,6 +58,7 @@ class KafkaProducerConsumerIntegrationTest {
         kafkaEventProducer.send(event);
 
         verify(kafkaEventConsumer, timeout(10_000)).consume(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().eventId()).isEqualTo(eventId);
         assertThat(eventCaptor.getValue()).isEqualTo(event);
     }
 }

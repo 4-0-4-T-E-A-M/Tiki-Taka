@@ -9,6 +9,7 @@ import io.github.team404.tikitaka.global.kafka.consumer.KafkaEventConsumer;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.producer.KafkaEventProducer;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -45,7 +46,9 @@ class KafkaDockerIntegrationTest {
     @Test
     void docker_kafka를_통해_예약_이벤트를_전송하고_수신한다() {
 
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000002");
         ReservationEvent event = new ReservationEvent(
+                eventId,
                 999L,
                 100L,
                 200L,
@@ -61,6 +64,7 @@ class KafkaDockerIntegrationTest {
         verify(kafkaEventConsumer, timeout(10_000))
                 .consume(eventCaptor.capture());
 
+        assertThat(eventCaptor.getValue().eventId()).isEqualTo(eventId);
         assertThat(eventCaptor.getValue()).isEqualTo(event);
     }
 }
