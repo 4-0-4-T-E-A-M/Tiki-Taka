@@ -7,6 +7,10 @@ plugins {
 group = 'io.github.team404'
 version = '0.0.1-SNAPSHOT'
 
+ext {
+	querydslVersion = '5.1.0'
+}
+
 java {
 	toolchain {
 		languageVersion = JavaLanguageVersion.of(21)
@@ -35,6 +39,13 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// QueryDSL (Jakarta) - 공연/유저 도메인에서도 공용으로 사용
+	implementation "com.querydsl:querydsl-jpa:${querydslVersion}:jakarta"
+	annotationProcessor "com.querydsl:querydsl-apt:${querydslVersion}:jakarta"
+	annotationProcessor 'jakarta.annotation:jakarta.annotation-api'
+	annotationProcessor 'jakarta.persistence:jakarta.persistence-api'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.kafka:spring-kafka-test'
 
@@ -52,4 +63,22 @@ dependencies {
 
 tasks.named('test') {
 	useJUnitPlatform()
+}
+
+def generatedDir = "$buildDir/generated/querydsl"
+
+sourceSets {
+	main {
+		java {
+			srcDirs += [generatedDir]
+		}
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	options.generatedSourceOutputDirectory.set(file(generatedDir))
+}
+
+clean {
+	delete file(generatedDir)
 }
