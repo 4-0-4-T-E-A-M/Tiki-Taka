@@ -1,0 +1,59 @@
+===== Q4 genre + region (with composite region,genre index) =====
+                                                                      QUERY PLAN                                                                      
+------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=340.16..340.21 rows=20 width=92) (actual time=0.356..0.368 rows=20 loops=1)
+   Buffers: shared hit=181 read=2
+   ->  Sort  (cost=340.16..340.81 rows=257 width=92) (actual time=0.355..0.366 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 30kB
+         Buffers: shared hit=181 read=2
+         ->  Bitmap Heap Scan on performances  (cost=6.92..333.33 rows=257 width=92) (actual time=0.049..0.323 rows=258 loops=1)
+               Recheck Cond: (((region)::text = 'SEOUL'::text) AND ((genre)::text = 'CONCERT'::text))
+               Heap Blocks: exact=178
+               Buffers: shared hit=178 read=2
+               ->  Bitmap Index Scan on performances_region_genre_idx  (cost=0.00..6.86 rows=257 width=0) (actual time=0.030..0.040 rows=258 loops=1)
+                     Index Cond: (((region)::text = 'SEOUL'::text) AND ((genre)::text = 'CONCERT'::text))
+                     Buffers: shared read=2
+ Planning:
+   Buffers: shared hit=163 read=1
+ Planning Time: 0.391 ms
+ Execution Time: 0.401 ms
+(17 rows)
+
+
+===== Q5 genre + region + date (with composite region,genre index) =====
+                                                                                      QUERY PLAN                                                                                       
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=1251.83..1251.88 rows=20 width=92) (actual time=3.032..3.036 rows=20 loops=1)
+   Buffers: shared hit=545
+   ->  Sort  (cost=1251.83..1252.15 rows=127 width=92) (actual time=3.031..3.033 rows=20 loops=1)
+         Sort Key: p.created_at DESC
+         Sort Method: top-N heapsort  Memory: 30kB
+         Buffers: shared hit=545
+         ->  Hash Semi Join  (cost=919.80..1248.45 rows=127 width=92) (actual time=2.715..2.986 rows=117 loops=1)
+               Hash Cond: (p.performance_id = ps.performance_id)
+               Buffers: shared hit=542
+               ->  Bitmap Heap Scan on performances p  (cost=6.92..333.33 rows=257 width=92) (actual time=0.037..0.276 rows=258 loops=1)
+                     Recheck Cond: (((region)::text = 'SEOUL'::text) AND ((genre)::text = 'CONCERT'::text))
+                     Heap Blocks: exact=178
+                     Buffers: shared hit=180
+                     ->  Bitmap Index Scan on performances_region_genre_idx  (cost=0.00..6.86 rows=257 width=0) (actual time=0.019..0.020 rows=258 loops=1)
+                           Index Cond: (((region)::text = 'SEOUL'::text) AND ((genre)::text = 'CONCERT'::text))
+                           Buffers: shared hit=2
+               ->  Hash  (cost=789.17..789.17 rows=9897 width=8) (actual time=2.627..2.628 rows=9818 loops=1)
+                     Buckets: 16384  Batches: 1  Memory Usage: 512kB
+                     Buffers: shared hit=362
+                     ->  Bitmap Heap Scan on performance_schedules ps  (cost=209.74..789.17 rows=9897 width=8) (actual time=0.663..1.837 rows=9818 loops=1)
+                           Recheck Cond: ((performance_datetime >= (now() + '10 days'::interval)) AND (performance_datetime <= (now() + '40 days'::interval)))
+                           Heap Blocks: exact=332
+                           Buffers: shared hit=362
+                           ->  Bitmap Index Scan on performance_schedules_performance_datetime_idx  (cost=0.00..207.27 rows=9897 width=0) (actual time=0.639..0.639 rows=9818 loops=1)
+                                 Index Cond: ((performance_datetime >= (now() + '10 days'::interval)) AND (performance_datetime <= (now() + '40 days'::interval)))
+                                 Buffers: shared hit=30
+ Planning:
+   Buffers: shared hit=327
+ Planning Time: 0.607 ms
+ Execution Time: 3.089 ms
+(30 rows)
+
+
