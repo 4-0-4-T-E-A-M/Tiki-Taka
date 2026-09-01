@@ -39,13 +39,15 @@ class WaitingQueueControllerTest {
         // given
         when(waitingQueueService.enter(1L, USER_ID)).thenReturn(0L);
         when(waitingQueueService.size(1L)).thenReturn(1L);
+        when(waitingQueueService.isAdmitted(1L, USER_ID)).thenReturn(true);
 
         // when & then
         mockMvc.perform(post("/api/schedules/1/queue")
                         .header("Authorization", "Bearer " + accessToken()))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.rank").value(0))
-                .andExpect(jsonPath("$.waitingCount").value(1));
+                .andExpect(jsonPath("$.waitingCount").value(1))
+                .andExpect(jsonPath("$.admitted").value(true));
     }
 
     @Test

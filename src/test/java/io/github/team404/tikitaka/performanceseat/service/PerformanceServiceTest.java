@@ -68,7 +68,8 @@ class PerformanceServiceTest {
         // given
         SeatRowRequest rowA = new SeatRowRequest("A", 2, SeatGrade.VIP, 150_000);
         SectionCreateRequest section = new SectionCreateRequest("1층 A구역", List.of(rowA));
-        ScheduleCreateRequest schedule = new ScheduleCreateRequest(LocalDateTime.now().plusDays(1), List.of(section));
+        ScheduleCreateRequest schedule = new ScheduleCreateRequest(
+                LocalDateTime.now().plusDays(7), LocalDateTime.now().plusDays(1), List.of(section));
         PerformanceCreateRequest request = new PerformanceCreateRequest(
                 "첫 콘서트", "아이유", "체조경기장", PerformanceRegion.SEOUL, PerformanceGenre.CONCERT,
                 "설명", "poster.png", List.of(schedule));

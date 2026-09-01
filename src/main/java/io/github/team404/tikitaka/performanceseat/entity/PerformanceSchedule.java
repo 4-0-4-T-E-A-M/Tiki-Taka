@@ -32,14 +32,41 @@ public class PerformanceSchedule {
     @Column(name = "performance_datetime", nullable = false)
     private LocalDateTime performanceDatetime; // 회차 공연 일시
 
+    // 예매 오픈 시각. 공연 일시(performanceDatetime)와 별개 — 실제 티켓팅처럼 공연보다 며칠~몇 주 앞서 열린다.
+    // 이 시각이 지나면 공연 오픈 스케줄러(#75)가 SCHEDULED → OPEN으로 전환한다.
+    @Column(name = "open_at", nullable = false)
+    private LocalDateTime openAt;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private ScheduleStatus status; // 회차 상태 — 오픈 전환은 5주차 공연 오픈 스케줄러 이슈 소관
+    private ScheduleStatus status; // 회차 상태 — 오픈 전환은 공연 오픈 스케줄러(#75)가 담당
 
     @Builder
-    private PerformanceSchedule(Long performanceId, LocalDateTime performanceDatetime) {
+    private PerformanceSchedule(Long performanceId, LocalDateTime performanceDatetime, LocalDateTime openAt) {
         this.performanceId = performanceId;
         this.performanceDatetime = performanceDatetime;
+        this.openAt = openAt;
         this.status = ScheduleStatus.SCHEDULED;
+    }
+
+    // 오픈 시각 도달 시 예매 가능 상태로 전환한다. 스케줄러가 반복 실행되거나 다중 인스턴스가
+    // 같은 회차를 동시에 집어도 안전하도록, 이미 OPEN이면 아무 것도 하지 않고 false를 돌려준다
+    // (호출 측은 이 반환값으로 "이번에 실제로 열렸는지"를 구분해 대기열 입장 허용 초기화를 한 번만 한다).
+    // CLOSED·CANCELED에서 다시 열리는 전이는 허용하지 않는다.
+    public boolean open() {
+        if (status == ScheduleStatus.OPEN) {
+            return false;
+        }
+        if (status != ScheduleStatus.SCHEDULED) {
+            throw new IllegalStateException("SCHEDULED 상태의 회차만 오픈할 수 있습니다. 현재 상태: " + status);
+        }
+        this.status = ScheduleStatus.OPEN;
+        return true;
+    }
+
+    // 예매 진입 가능 여부의 단일 기준. 좌석에 별도의 오픈 전 상태를 두는 대신(#75 설계 결정)
+    // 회차 상태 하나로 판단한다 — 실제 예매 트랜잭션 진입점의 검증은 booking 도메인 소관.
+    public boolean isBookable() {
+        return status == ScheduleStatus.OPEN;
     }
 }

@@ -28,7 +28,11 @@ public class QueueRankPusher {
             }
 
             long waitingCount = waitingQueueService.size(key.scheduleId());
-            emitter.send(SseEmitter.event().name(EVENT_NAME_RANK).data(QueueStatusResponse.of(rank, waitingCount)));
+            // admitCount는 오픈 시점에 한 번 설정되고 7주차 ramp-up 전까지 고정이므로, 순번이 그대로면
+            // admitted도 그대로다 — 위의 rank 변경 여부만으로 push 트리거를 판단해도 누락이 없다.
+            boolean admitted = waitingQueueService.isAdmitted(key.scheduleId(), key.userId());
+            emitter.send(SseEmitter.event().name(EVENT_NAME_RANK)
+                    .data(QueueStatusResponse.of(rank, waitingCount, admitted)));
             registry.updateLastSentRank(key, rank);
         } catch (BusinessException | IOException e) {
             emitter.completeWithError(e);

@@ -5,6 +5,7 @@ import java.util.List;
 
 public record ScheduleCreateRequest(
         LocalDateTime performanceDatetime,
+        LocalDateTime openAt,
         List<SectionCreateRequest> sections
 ) {
 }

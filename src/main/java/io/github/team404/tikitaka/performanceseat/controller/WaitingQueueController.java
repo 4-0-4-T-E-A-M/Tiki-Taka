@@ -34,22 +34,26 @@ public class WaitingQueueController {
     @PostMapping
     public ResponseEntity<QueueStatusResponse> enter(
             @PathVariable Long scheduleId, @AuthenticationPrincipal CustomUserPrincipal principal) {
-        long rank = waitingQueueService.enter(scheduleId, principal.getUserId());
+        Long userId = principal.getUserId();
+        long rank = waitingQueueService.enter(scheduleId, userId);
         long waitingCount = waitingQueueService.size(scheduleId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(QueueStatusResponse.of(rank, waitingCount));
+        boolean admitted = waitingQueueService.isAdmitted(scheduleId, userId);
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(QueueStatusResponse.of(rank, waitingCount, admitted));
     }
 
     @GetMapping("/me")
     public QueueStatusResponse getMyStatus(
             @PathVariable Long scheduleId, @AuthenticationPrincipal CustomUserPrincipal principal) {
-        long rank = waitingQueueService.getRank(scheduleId, principal.getUserId());
+        Long userId = principal.getUserId();
+        long rank = waitingQueueService.getRank(scheduleId, userId);
         long waitingCount = waitingQueueService.size(scheduleId);
-        return QueueStatusResponse.of(rank, waitingCount);
+        boolean admitted = waitingQueueService.isAdmitted(scheduleId, userId);
+        return QueueStatusResponse.of(rank, waitingCount, admitted);
     }
 
-    // 순번이 바뀔 때마다(짧은 주기로) 서버가 클라이언트에 push한다. 입장 허용(admitted) 이벤트는
-    // 공연 오픈 스케줄러가 admitCount를 산정해야 의미가 있어 이번 이슈 범위에서는 제외했다 —
-    // 해당 스케줄러 구현 이슈에서 이어서 추가한다.
+    // 순번이 바뀔 때마다(짧은 주기로) 서버가 클라이언트에 push한다. push되는 QueueStatusResponse에는
+    // 입장 허용 여부(admitted)도 포함된다 — 오픈 스케줄러(#75)가 admitCount를 설정하면서 의미가 생겼다.
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter stream(@PathVariable Long scheduleId, @AuthenticationPrincipal CustomUserPrincipal principal) {
         QueueConnectionKey key = new QueueConnectionKey(scheduleId, principal.getUserId());

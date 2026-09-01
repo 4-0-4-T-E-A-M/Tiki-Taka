@@ -171,6 +171,7 @@ class PerformanceRepositoryTest {
         performanceScheduleRepository.save(PerformanceSchedule.builder()
                 .performanceId(performanceId)
                 .performanceDatetime(performanceDatetime)
+                .openAt(performanceDatetime.minusDays(7))
                 .build());
     }
 }

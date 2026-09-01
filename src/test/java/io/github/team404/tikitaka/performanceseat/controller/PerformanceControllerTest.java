@@ -145,6 +145,7 @@ class PerformanceControllerTest {
         PerformanceSchedule schedule = mock(PerformanceSchedule.class);
         given(schedule.getId()).willReturn(id);
         given(schedule.getPerformanceDatetime()).willReturn(LocalDateTime.of(2026, 9, 1, 19, 0));
+        given(schedule.getOpenAt()).willReturn(LocalDateTime.of(2026, 8, 25, 20, 0));
         given(schedule.getStatus()).willReturn(ScheduleStatus.SCHEDULED);
         return schedule;
     }
