@@ -8,6 +8,10 @@ spring:
     redis:
       host: localhost
       port: 6379
+  elasticsearch:
+    # 실제 ES 연결은 Testcontainers IT에서 @DynamicPropertySource로 오버라이드한다.
+    # 그 외 테스트는 ES를 쓰지 않지만, 미설정 시 프로퍼티 플레이스홀더가 풀리지 않아 기본값만 둔다.
+    uris: http://localhost:9200
   jpa:
     hibernate:
       ddl-auto: create-drop

@@ -31,6 +31,28 @@ services:
       timeout: 5s
       retries: 5
 
+  elasticsearch:
+    # 8.18.x — Spring Boot 3.5.16이 관리하는 elasticsearch-java 클라이언트(8.18.8)와 맞춤
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.18.8
+    container_name: tikitaka-elasticsearch
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      # 로컬 개발 전용 설정 — 운영 클러스터의 보안/고가용성 구성이 아님
+      xpack.security.enabled: "false"
+      # postgres/redis/kafka와 함께 뜨므로 힙을 512m로 제한
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=3s' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
   kafka:
     image: confluentinc/cp-kafka:7.6.1
     container_name: tikitaka-kafka
@@ -63,3 +85,4 @@ volumes:
   postgres_data:
   redis_data:
   kafka_data:
+  elasticsearch_data:
