@@ -1,0 +1,118 @@
+===== Q1 genre only (CONCERT) =====
+                                                        QUERY PLAN                                                         
+---------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=665.13..665.18 rows=20 width=92) (actual time=3.260..3.264 rows=20 loops=1)
+   Buffers: shared hit=330
+   ->  Sort  (cost=665.13..673.41 rows=3312 width=92) (actual time=3.259..3.260 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 30kB
+         Buffers: shared hit=330
+         ->  Seq Scan on performances  (cost=0.00..577.00 rows=3312 width=92) (actual time=0.004..2.879 rows=3312 loops=1)
+               Filter: ((genre)::text = 'CONCERT'::text)
+               Rows Removed by Filter: 16688
+               Buffers: shared hit=327
+ Planning:
+   Buffers: shared hit=104
+ Planning Time: 0.231 ms
+ Execution Time: 3.286 ms
+(14 rows)
+
+
+===== Q2 region only (SEOUL) =====
+                                                        QUERY PLAN                                                         
+---------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=618.22..618.27 rows=20 width=92) (actual time=1.514..1.517 rows=20 loops=1)
+   Buffers: shared hit=330
+   ->  Sort  (cost=618.22..622.09 rows=1549 width=92) (actual time=1.513..1.514 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 30kB
+         Buffers: shared hit=330
+         ->  Seq Scan on performances  (cost=0.00..577.00 rows=1549 width=92) (actual time=0.003..1.382 rows=1549 loops=1)
+               Filter: ((region)::text = 'SEOUL'::text)
+               Rows Removed by Filter: 18451
+               Buffers: shared hit=327
+ Planning:
+   Buffers: shared hit=104
+ Planning Time: 0.174 ms
+ Execution Time: 1.531 ms
+(14 rows)
+
+
+===== Q3 date range only =====
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2415.39..2415.44 rows=20 width=92) (actual time=16.363..16.367 rows=20 loops=1)
+   Buffers: shared hit=662
+   ->  Sort  (cost=2415.39..2440.12 rows=9892 width=92) (actual time=16.361..16.363 rows=20 loops=1)
+         Sort Key: p.created_at DESC
+         Sort Method: top-N heapsort  Memory: 28kB
+         Buffers: shared hit=662
+         ->  Hash Semi Join  (cost=1450.25..2152.16 rows=9892 width=92) (actual time=10.810..14.578 rows=8319 loops=1)
+               Hash Cond: (p.performance_id = ps.performance_id)
+               Buffers: shared hit=659
+               ->  Seq Scan on performances p  (cost=0.00..527.00 rows=20000 width=92) (actual time=0.003..1.161 rows=20000 loops=1)
+                     Buffers: shared hit=327
+               ->  Hash  (cost=1326.60..1326.60 rows=9892 width=8) (actual time=10.756..10.757 rows=9818 loops=1)
+                     Buckets: 16384  Batches: 1  Memory Usage: 512kB
+                     Buffers: shared hit=332
+                     ->  Seq Scan on performance_schedules ps  (cost=0.00..1326.60 rows=9892 width=8) (actual time=0.017..9.710 rows=9818 loops=1)
+                           Filter: ((performance_datetime >= (now() + '10 days'::interval)) AND (performance_datetime <= (now() + '40 days'::interval)))
+                           Rows Removed by Filter: 29966
+                           Buffers: shared hit=332
+ Planning:
+   Buffers: shared hit=218
+ Planning Time: 0.435 ms
+ Execution Time: 16.431 ms
+(22 rows)
+
+
+===== Q4 genre + region =====
+                                                       QUERY PLAN                                                        
+-------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=633.84..633.89 rows=20 width=92) (actual time=1.348..1.350 rows=20 loops=1)
+   Buffers: shared hit=330
+   ->  Sort  (cost=633.84..634.48 rows=257 width=92) (actual time=1.346..1.347 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 30kB
+         Buffers: shared hit=330
+         ->  Seq Scan on performances  (cost=0.00..627.00 rows=257 width=92) (actual time=0.013..1.305 rows=258 loops=1)
+               Filter: (((genre)::text = 'CONCERT'::text) AND ((region)::text = 'SEOUL'::text))
+               Rows Removed by Filter: 19742
+               Buffers: shared hit=327
+ Planning:
+   Buffers: shared hit=104
+ Planning Time: 0.193 ms
+ Execution Time: 1.365 ms
+(14 rows)
+
+
+===== Q5 genre + region + date =====
+                                                                       QUERY PLAN                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2082.88..2082.93 rows=20 width=92) (actual time=10.811..10.815 rows=20 loops=1)
+   Buffers: shared hit=662
+   ->  Sort  (cost=2082.88..2083.19 rows=127 width=92) (actual time=10.810..10.812 rows=20 loops=1)
+         Sort Key: p.created_at DESC
+         Sort Method: top-N heapsort  Memory: 30kB
+         Buffers: shared hit=662
+         ->  Hash Semi Join  (cost=1450.25..2079.50 rows=127 width=92) (actual time=9.293..10.764 rows=117 loops=1)
+               Hash Cond: (p.performance_id = ps.performance_id)
+               Buffers: shared hit=659
+               ->  Seq Scan on performances p  (cost=0.00..627.00 rows=257 width=92) (actual time=0.013..1.445 rows=258 loops=1)
+                     Filter: (((genre)::text = 'CONCERT'::text) AND ((region)::text = 'SEOUL'::text))
+                     Rows Removed by Filter: 19742
+                     Buffers: shared hit=327
+               ->  Hash  (cost=1326.60..1326.60 rows=9892 width=8) (actual time=9.236..9.236 rows=9818 loops=1)
+                     Buckets: 16384  Batches: 1  Memory Usage: 512kB
+                     Buffers: shared hit=332
+                     ->  Seq Scan on performance_schedules ps  (cost=0.00..1326.60 rows=9892 width=8) (actual time=0.004..8.353 rows=9818 loops=1)
+                           Filter: ((performance_datetime >= (now() + '10 days'::interval)) AND (performance_datetime <= (now() + '40 days'::interval)))
+                           Rows Removed by Filter: 29966
+                           Buffers: shared hit=332
+ Planning:
+   Buffers: shared hit=226
+ Planning Time: 0.392 ms
+ Execution Time: 10.873 ms
+(24 rows)
+
+
