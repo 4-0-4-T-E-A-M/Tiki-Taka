@@ -124,3 +124,31 @@ rebase 과정에서 develop에 이미 `src/test/resources/application.yaml`(H2�
 - 검증: `./gradlew test --tests "*.ReservationServiceTest" --tests "*.TikitakaApplicationTests"`
   통과 (Docker 미사용 환경이라 `ReservationConcurrencyTest`는 로컬에서 별도로
   `docker compose up -d` 후 전체 `./gradlew test`로 재검증 필요)
+
+### 이슈 #92 — Kafka 예매 완료 이벤트 Producer 구현 (구현 완료, PR 전)
+- 브랜치: `feature/#92-kafka-예매완료-이벤트-producer`
+- #81에서 이미 만들어져 있던 스켈레톤(`KafkaEventProducer`/`ReservationEvent`/`RESERVATION_EVENTS`
+  토픽)을 그대로 재사용 — 스키마 변경 없음. `ReservationService`가 이 프로듀서를 한 번도 호출하지
+  않고 있던 걸 실제로 연결하는 게 이번 작업의 전부(이슈 본문의 "Kafka 의존성 없음" 문구는 #81 이후로
+  stale한 것으로 확인됨).
+- "예매 완료" 시점 = `createReservation` 트랜잭션 커밋 성공 시로 해석(결제 확정 `Reservation.confirm()`을
+  호출하는 별도 결제 플로우가 아직 코드에 없어서, ROADMAP 예매 흐름도의 "예매 레코드 생성 → Kafka
+  이벤트 발행" 순서를 그대로 따름).
+- #34에서 락 해제에 쓰던 `TransactionSynchronizationManager` 패턴을 그대로 재사용해
+  `afterCommit()`에서만 이벤트를 발행 → 롤백 시 미발행이 보장되고, 발행 실패가 이미 끝난 커밋에
+  영향을 줄 수 없음(둘 다 이 문서 상단 규칙과 일치). 관리되는 트랜잭션이 없는 호출(순수 단위
+  테스트 등)은 기존 언락 폴백과 동일하게 즉시 발행으로 폴백.
+- `KafkaEventProducer.send()`에 메시지 키(`reservationId`, 파티션 순서 보장용)와 발행 성공/실패
+  로깅(`whenComplete`) 추가.
+- 스키마 버전 정책을 `ReservationEvent`에 클래스 주석으로 명시(필드 추가는 허용, breaking 변경은
+  새 이벤트 타입/토픽으로 분리) — 조준형(Consumer 담당) 확인 필요, 규칙 4 적용 대상.
+- 테스트: `ReservationServiceTest`에 발행 성공 케이스 1개 추가 + 기존 실패 케이스 3곳에
+  `verify(kafkaEventProducer, never()).send(any())` 추가, `KafkaEventProducerTest` 신규(발행
+  성공/실패 각각 단위 테스트), `ReservationEventIntegrationTest` 신규(`@EmbeddedKafka` +
+  Testcontainers Redis로 실제 afterCommit 경로를 검증 — Mockito 단위 테스트는 트랜잭션이 관리되지
+  않는 즉시발행 폴백만 타므로 afterCommit 등록 자체는 이 통합 테스트가 아니면 검증 불가).
+- 검증: `./gradlew compileJava compileTestJava` 통과, `./gradlew test --tests
+  "*.ReservationServiceTest" --tests "*.KafkaEventProducerTest"` 8건 전부 통과. **이번 세션은 Docker
+  미가용 환경이라 `ReservationEventIntegrationTest`(신규)와 기존 `ReservationApiIntegrationTest`/
+  `ReservationConcurrencyTest`는 컴파일만 확인했고 실행 검증을 못 함** — PR 올리기 전 로컬에서
+  `docker compose up -d` 후 전체 `./gradlew test`로 재검증 필요.
