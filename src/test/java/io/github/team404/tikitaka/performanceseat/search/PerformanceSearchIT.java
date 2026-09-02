@@ -3,11 +3,12 @@ package io.github.team404.tikitaka.performanceseat.search;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceSearchResponse;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceGenre;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceRegion;
+import io.github.team404.tikitaka.performanceseat.repository.PerformanceRepository;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,18 +18,19 @@ import org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchClientA
 import org.springframework.boot.autoconfigure.elasticsearch.ElasticsearchRestClientAutoConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.repository.config.EnableElasticsearchRepositories;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-// #90: nori 분석기가 적용된 인덱스에서 한국어 형태소 검색이 되는지 검증한다.
+// #90/#93: nori 분석기가 적용된 인덱스에서 한국어 형태소 검색·필터·정렬·페이지네이션을 검증한다.
+// PostgreSQL 폴백 경로는 쓰이지 않으므로 PerformanceRepository는 목으로 둔다 (폴백은 PerformanceSearchFallbackIT).
 // docker/elasticsearch/Dockerfile을 그대로 빌드해 컨테이너를 띄우므로 별도 이미지 준비가 필요 없다.
 @Testcontainers
 @SpringBootTest(classes = PerformanceSearchIT.TestConfig.class)
@@ -61,6 +63,9 @@ class PerformanceSearchIT {
     @Autowired
     private ElasticsearchOperations elasticsearchOperations;
 
+    @MockitoBean
+    private PerformanceRepository performanceRepository; // ES 정상 경로에서는 호출되지 않음
+
     @BeforeEach
     void setUp() {
         var indexOps = elasticsearchOperations.indexOps(PerformanceDocument.class);
@@ -76,6 +81,11 @@ class PerformanceSearchIT {
     }
 
     private void save(long id, String title, String artist, PerformanceGenre genre, PerformanceRegion region) {
+        save(id, title, artist, genre, region, LocalDateTime.now());
+    }
+
+    private void save(long id, String title, String artist, PerformanceGenre genre,
+            PerformanceRegion region, LocalDateTime createdAt) {
         searchRepository.save(PerformanceDocument.builder()
                 .id(String.valueOf(id))
                 .title(title)
@@ -84,7 +94,7 @@ class PerformanceSearchIT {
                 .genre(genre.name())
                 .region(region.name())
                 .posterUrl("http://example.com/" + id + ".jpg")
-                .createdAt(LocalDateTime.now())
+                .createdAt(createdAt)
                 .build());
         elasticsearchOperations.indexOps(PerformanceDocument.class).refresh();
     }
@@ -94,9 +104,10 @@ class PerformanceSearchIT {
         save(1, "아이유 콘서트 2026", "아이유", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL);
         save(2, "세븐틴 팬미팅", "세븐틴", PerformanceGenre.FAN_MEETING, PerformanceRegion.BUSAN);
 
-        Page<PerformanceResponse> result = searchService.search("아이유", null, null, PageRequest.of(0, 10));
+        PerformanceSearchResponse result = searchService.search("아이유", null, null, PageRequest.of(0, 10));
 
-        assertThat(result.getContent()).extracting(PerformanceResponse::id).containsExactly(1L);
+        assertThat(result.content()).extracting(PerformanceResponse::id).containsExactly(1L);
+        assertThat(result.degraded()).isFalse();
     }
 
     @Test
@@ -104,9 +115,9 @@ class PerformanceSearchIT {
         save(1, "아이유의 콘서트", "아이유", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL);
 
         // "아이유의" 가 형태소 분석으로 "아이유" + "의" 로 분리되어 색인된다
-        Page<PerformanceResponse> result = searchService.search("아이유", null, null, PageRequest.of(0, 10));
+        PerformanceSearchResponse result = searchService.search("아이유", null, null, PageRequest.of(0, 10));
 
-        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.totalElements()).isEqualTo(1);
     }
 
     @Test
@@ -114,9 +125,9 @@ class PerformanceSearchIT {
         save(1, "뮤지컬 라이온킹", "라이온킹 컴퍼니", PerformanceGenre.MUSICAL, PerformanceRegion.SEOUL);
 
         // decompound_mode=mixed 라 "라이온킹" 이 "라이온" + "킹" 으로도 색인되어 부분어 검색 가능
-        Page<PerformanceResponse> result = searchService.search("라이온", null, null, PageRequest.of(0, 10));
+        PerformanceSearchResponse result = searchService.search("라이온", null, null, PageRequest.of(0, 10));
 
-        assertThat(result.getTotalElements()).isEqualTo(1);
+        assertThat(result.totalElements()).isEqualTo(1);
     }
 
     @Test
@@ -125,31 +136,49 @@ class PerformanceSearchIT {
         save(2, "가을 뮤직 페스티벌", "여러 아티스트", PerformanceGenre.FESTIVAL, PerformanceRegion.BUSAN);
         save(3, "겨울 뮤지컬", "아무개", PerformanceGenre.MUSICAL, PerformanceRegion.SEOUL);
 
-        Page<PerformanceResponse> result = searchService.search(
+        PerformanceSearchResponse result = searchService.search(
                 "뮤직", PerformanceGenre.FESTIVAL, PerformanceRegion.SEOUL, PageRequest.of(0, 10));
 
-        assertThat(result.getContent()).extracting(PerformanceResponse::id).containsExactly(1L);
+        assertThat(result.content()).extracting(PerformanceResponse::id).containsExactly(1L);
     }
 
     @Test
-    void 키워드가_없으면_필터만으로_최신순_조회된다() {
-        save(1, "공연 A", "아티스트", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL);
-        save(2, "공연 B", "아티스트", PerformanceGenre.CONCERT, PerformanceRegion.BUSAN);
+    void 키워드가_없으면_필터만으로_최신순_정렬된다() {
+        save(1, "공연 A", "아티스트", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL,
+                LocalDateTime.now().minusDays(2));
+        save(2, "공연 B", "아티스트", PerformanceGenre.CONCERT, PerformanceRegion.BUSAN,
+                LocalDateTime.now().minusDays(1));
 
-        Page<PerformanceResponse> result = searchService.search(
+        PerformanceSearchResponse result = searchService.search(
                 null, PerformanceGenre.CONCERT, null, PageRequest.of(0, 10));
 
-        assertThat(result.getTotalElements()).isEqualTo(2);
+        assertThat(result.content()).extracting(PerformanceResponse::id).containsExactly(2L, 1L);
     }
 
     @Test
-    void 결과가_없으면_빈_페이지를_반환한다() {
+    void 페이지네이션_계약이_지켜진다() {
+        for (long id = 1; id <= 5; id++) {
+            save(id, "콘서트 " + id, "아티스트", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL);
+        }
+
+        PerformanceSearchResponse page1 = searchService.search("콘서트", null, null, PageRequest.of(1, 2));
+
+        assertThat(page1.content()).hasSize(2);
+        assertThat(page1.totalElements()).isEqualTo(5);
+        assertThat(page1.page()).isEqualTo(1);
+        assertThat(page1.size()).isEqualTo(2);
+    }
+
+    @Test
+    void 결과가_없으면_빈_결과를_반환한다() {
         save(1, "아이유 콘서트", "아이유", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL);
 
-        Page<PerformanceResponse> result = searchService.search("존재하지않는가수", null, null, PageRequest.of(0, 10));
+        PerformanceSearchResponse result =
+                searchService.search("존재하지않는가수", null, null, PageRequest.of(0, 10));
 
-        assertThat(result.getContent()).isEmpty();
-        assertThat(result.getTotalElements()).isZero();
+        assertThat(result.content()).isEmpty();
+        assertThat(result.totalElements()).isZero();
+        assertThat(result.degraded()).isFalse();
     }
 
     @EnableElasticsearchRepositories(basePackageClasses = PerformanceSearchRepository.class)

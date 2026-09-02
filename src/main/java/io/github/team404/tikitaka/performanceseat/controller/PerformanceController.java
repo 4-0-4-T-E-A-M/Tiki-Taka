@@ -34,16 +34,16 @@ public class PerformanceController {
     private final PerformanceService performanceService;
     private final PerformanceSearchService performanceSearchService;
 
-    // 키워드(q) 기반 공연 검색 — Elasticsearch(nori) 경로. genre/region은 선택 필터.
-    // 구조화 필터만 쓰는 조회는 QueryDSL 경로 소관(#86 역할 분리).
+    // 키워드(q) 기반 공연 검색 — 기본 Elasticsearch(nori), 장애 시 PostgreSQL 폴백(degraded=true).
+    // genre/region은 선택 필터. 구조화 필터만 쓰는 조회는 QueryDSL 경로 소관(#86 역할 분리).
     @GetMapping("/search")
     public ResponseEntity<BaseResponse<PerformanceSearchResponse>> search(
             @RequestParam(name = "q", required = false) String keyword,
             @RequestParam(required = false) PerformanceGenre genre,
             @RequestParam(required = false) PerformanceRegion region,
             @PageableDefault(size = 20) Pageable pageable) {
-        PerformanceSearchResponse response = PerformanceSearchResponse.from(
-                performanceSearchService.search(keyword, genre, region, pageable));
+        PerformanceSearchResponse response =
+                performanceSearchService.search(keyword, genre, region, pageable);
         return ResponseEntity.ok(BaseResponse.success("공연 검색에 성공했습니다.", response));
     }
 
