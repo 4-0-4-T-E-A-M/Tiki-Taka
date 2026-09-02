@@ -13,6 +13,7 @@ import io.github.team404.tikitaka.performanceseat.entity.Performance;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.entity.Section;
+import io.github.team404.tikitaka.performanceseat.ranking.PopularPerformanceRankingService;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceCacheRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceScheduleRepository;
@@ -39,6 +40,7 @@ public class PerformanceService {
     private final ReservationRepository reservationRepository;
     private final PerformanceCacheRepository performanceCacheRepository;
     private final PerformanceEventPublisher performanceEventPublisher;
+    private final PopularPerformanceRankingService popularPerformanceRankingService;
 
     @Transactional
     public Performance createPerformance(PerformanceCreateRequest request) {
@@ -183,8 +185,11 @@ public class PerformanceService {
     // 묶어 캐싱한다(캐시 대상 범위 근거는 이슈 #56 참고).
     @Transactional(readOnly = true)
     public PerformanceDetailResponse getPerformanceDetail(Long performanceId) {
-        return performanceCacheRepository.findDetail(performanceId)
+        PerformanceDetailResponse detail = performanceCacheRepository.findDetail(performanceId)
                 .orElseGet(() -> loadAndCacheDetail(performanceId));
+        // 인기 랭킹 조회수 반영 — 캐시 히트 여부와 무관하게 "상세 진입"마다 카운트한다 (#94).
+        popularPerformanceRankingService.recordView(performanceId);
+        return detail;
     }
 
     private PerformanceDetailResponse loadAndCacheDetail(Long performanceId) {

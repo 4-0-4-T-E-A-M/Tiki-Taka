@@ -63,6 +63,9 @@ class PerformanceServiceTest {
     @Mock
     private io.github.team404.tikitaka.performanceseat.search.PerformanceEventPublisher performanceEventPublisher;
 
+    @Mock
+    private io.github.team404.tikitaka.performanceseat.ranking.PopularPerformanceRankingService popularPerformanceRankingService;
+
     @InjectMocks
     private PerformanceService performanceService;
 
@@ -181,6 +184,8 @@ class PerformanceServiceTest {
         assertThat(result).isEqualTo(cached);
         verify(performanceRepository, never()).findById(any());
         verify(performanceCacheRepository, never()).saveDetail(any(), any());
+        // 캐시 히트여도 인기 랭킹 조회수는 반영한다
+        verify(popularPerformanceRankingService, times(1)).recordView(1L);
     }
 
     @Test
