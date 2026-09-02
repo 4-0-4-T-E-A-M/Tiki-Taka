@@ -1,5 +1,6 @@
 package io.github.team404.tikitaka.global.kafka.consumer;
 
+import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.topic.KafkaTopics;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,10 @@ public class EmailNotificationConsumer {
             groupId = "email-notification-consumer"
     )
     public void consume(ReservationEvent event) {
+        if (event.status() != ReservationStatus.CONFIRMED) {
+            return;
+        }
+
         log.info("Kafka reservation event received for email notification. reservationId={}",
                 event.reservationId());
     }
