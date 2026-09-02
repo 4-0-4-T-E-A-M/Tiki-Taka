@@ -4,12 +4,13 @@ import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.global.exception.BusinessException;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.topic.KafkaTopics;
+import io.github.team404.tikitaka.notification.service.EmailSender;
 import io.github.team404.tikitaka.user.domain.User;
 import io.github.team404.tikitaka.user.exception.UserErrorCode;
 import io.github.team404.tikitaka.user.repository.UserRepository;
-import io.github.team404.tikitaka.notification.service.EmailSender;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.mail.MailException;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -30,12 +31,38 @@ public class EmailNotificationConsumer {
             return;
         }
 
-        User user = userRepository.findById(event.userId())
-                .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
-        String email = user.getEmail();
-        emailSender.sendReservationCompleteEmail(email);
+        User user;
+        try {
+            user = userRepository.findById(event.userId())
+                    .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+        } catch (BusinessException e) {
+            log.error(
+                    "예약 완료 이메일 발송을 위한 사용자 조회 실패. reservationId={}, userId={}",
+                    event.reservationId(),
+                    event.userId(),
+                    e
+            );
+            throw e;
+        }
 
-        log.info("Kafka reservation event received for email notification. reservationId={}, userId={}",
-                event.reservationId(), event.userId());
+        String email = user.getEmail();
+
+        try {
+            emailSender.sendReservationCompleteEmail(email);
+        } catch (MailException e) {
+            log.error(
+                    "예약 완료 이메일 발송 실패. reservationId={}, userId={}",
+                    event.reservationId(),
+                    event.userId(),
+                    e
+            );
+            throw e;
+        }
+
+        log.info(
+                "예약 완료 이메일 발송 성공. reservationId={}, userId={}",
+                event.reservationId(),
+                event.userId()
+        );
     }
 }
