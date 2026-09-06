@@ -60,6 +60,9 @@ performance:
     initial-admit-count: 100
 
 queue:
+  admission:
+    # 열린 회차의 대기열 앞에서부터 사용자를 통과(admitted)시키는 스케줄러 주기(#102)
+    poll-interval-ms: 1000
   sse:
     # 대기열 순번 재조회 주기 — 커넥션 전체를 순회하는 단일 스케줄 태스크의 간격
     poll-interval-ms: 1000

@@ -32,7 +32,7 @@ class SseEmitterRegistryTest {
         QueueConnectionKey key = new QueueConnectionKey(1L, 10L);
         SseEmitter emitter = mock(SseEmitter.class);
         registry.register(key, emitter);
-        registry.updateLastSentRank(key, 3L);
+        registry.updateLastSent(key, 3L, false);
 
         ArgumentCaptor<Runnable> callback = ArgumentCaptor.forClass(Runnable.class);
         verify(emitter).onCompletion(callback.capture());
@@ -43,6 +43,7 @@ class SseEmitterRegistryTest {
         // then
         assertThat(registry.snapshot()).doesNotContainKey(key);
         assertThat(registry.lastSentRank(key)).isNull();
+        assertThat(registry.lastSentAdmitted(key)).isNull();
     }
 
     @Test
