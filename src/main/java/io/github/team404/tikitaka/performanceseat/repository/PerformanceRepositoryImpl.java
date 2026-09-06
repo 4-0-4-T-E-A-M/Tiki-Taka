@@ -49,6 +49,33 @@ public class PerformanceRepositoryImpl implements PerformanceRepositoryCustom {
                 .fetchOne());
     }
 
+    @Override
+    public Page<Performance> searchByKeyword(
+            String keyword, PerformanceGenre genre, PerformanceRegion region, Pageable pageable) {
+        List<Performance> content = queryFactory
+                .selectFrom(performance)
+                .where(keywordMatches(keyword), genreEq(genre), regionEq(region))
+                .orderBy(performance.createdAt.desc())
+                .offset(pageable.getOffset())
+                .limit(pageable.getPageSize())
+                .fetch();
+
+        return PageableExecutionUtils.getPage(content, pageable, () -> queryFactory
+                .select(performance.count())
+                .from(performance)
+                .where(keywordMatches(keyword), genreEq(genre), regionEq(region))
+                .fetchOne());
+    }
+
+    // 형태소 분석 없는 단순 부분일치 — 폴백 상태에서만 쓰인다 (#93).
+    private BooleanExpression keywordMatches(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        return performance.title.containsIgnoreCase(keyword)
+                .or(performance.artist.containsIgnoreCase(keyword));
+    }
+
     private BooleanExpression genreEq(PerformanceGenre genre) {
         return genre != null ? performance.genre.eq(genre) : null;
     }

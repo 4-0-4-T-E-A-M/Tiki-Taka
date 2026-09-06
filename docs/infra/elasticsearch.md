@@ -51,6 +51,17 @@ curl http://localhost:9200                             # 버전 정보(8.18.8)
   `RestClient` → `ElasticsearchClient` → `ElasticsearchOperations`를 구성하고,
   `@EnableElasticsearchRepositories`도 스타터가 자동 활성화한다.
 
+# 공연 검색 API (#90, #93)
+
+- `GET /api/performances/search?q=&genre=&region=&page=&size=` — 키워드 기반 공연 검색
+- 응답 `PerformanceSearchResponse`: `content` / `totalElements` / `page` / `size` / **`degraded`**
+- 경로 선택 (queryDSL-vs-es-role-split.md):
+  - **기본**: Elasticsearch(nori) — 형태소 분석 + 관련도(`_score`) 정렬. `q` 없으면 `createdAt desc`
+  - **폴백**: ES 호출이 예외를 던지면 `PerformanceRepository.searchByKeyword`(QueryDSL)로 전환.
+    `title`/`artist` 대소문자 무시 부분일치 + 최신순으로 **축소**되고 응답에 `degraded=true`.
+    페이지네이션·`genre`/`region` 필터 계약은 두 경로가 동일하다.
+- 구조화 필터만(genre/region/날짜, 키워드 없음) 쓰는 조회는 이 API가 아니라 QueryDSL 경로 소관.
+
 # 공연 검색 인덱스 (#90)
 
 ## 문서·매핑
@@ -83,9 +94,23 @@ performanceSearchIndexer.reindexAll();   // 인덱스 삭제 → 매핑과 함�
 
 ## 테스트
 
-- `ElasticsearchConnectionIT` (#74) — 앱 설정 기반 `ElasticsearchClient` 연결/health/ping
-- `PerformanceSearchIT` (#90) — `docker/elasticsearch/Dockerfile`을 빌드해 nori 포함 컨테이너로
-  한국어 형태소 검색(조사 분리, decompound 부분어), genre/region 필터, 무결과 케이스 검증
-- `PerformanceSearchIndexerTest` / `PerformanceChangedEventConsumerTest` — 색인·소비 로직 단위 테스트
+| 테스트 | 종류 | 검증 |
+| --- | --- | --- |
+| `PerformanceSearchServiceTest` | 단위 | ES 정상→`degraded=false`, ES 예외→PG 폴백·`degraded=true`, 폴백시 필터/페이지 계약 |
+| `PerformanceRepositoryTest` (`searchByKeyword`) | `@DataJpaTest`(H2) | 폴백 쿼리: 제목/아티스트 부분일치, 대소문자 무시, genre/region 필터, 최신순 |
+| `PerformanceControllerTest` | `@WebMvcTest` | 검색 응답 형태, `degraded` 필드 노출 |
+| `ElasticsearchConnectionIT` (#74) | Testcontainers | 앱 설정 기반 `ElasticsearchClient` 연결/health/ping |
+| `PerformanceSearchIT` (#90/#93) | Testcontainers (nori ES) | 형태소 검색(조사 분리, decompound 부분어), genre/region 필터, 정렬, **페이지네이션 계약**, 무결과 |
+| `PerformanceSearchFallbackIT` (#93) | Testcontainers (Redis) + `RANDOM_PORT` | ES 주소를 `localhost:1`로 두고 `/api/performances/search` 호출 → 200 + `degraded:true` + PostgreSQL 결과 |
+| `PerformanceSearchIndexerTest` / `PerformanceChangedEventConsumerTest` | 단위 | 색인·소비 로직 |
 
-(모두 Docker 필요)
+실행:
+
+```bash
+docker compose up -d --build            # 최초 1회 (--build로 nori 이미지)
+./gradlew test --tests "*.PerformanceSearch*" --tests "*.PerformanceRepositoryTest"
+```
+
+- 단위 테스트(`*ServiceTest`, `*RepositoryTest`, `*ControllerTest`)는 Docker 없이 실행된다.
+- `*IT`(Testcontainers)는 Docker 필요. `PerformanceSearchIT`는 첫 실행 시 `docker/elasticsearch/Dockerfile`을
+  빌드하므로 수 분 걸릴 수 있다(이후 캐시).

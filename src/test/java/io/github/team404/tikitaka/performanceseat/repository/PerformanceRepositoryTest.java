@@ -152,6 +152,49 @@ class PerformanceRepositoryTest {
         assertThat(result.getTotalPages()).isEqualTo(2);
     }
 
+    @Test
+    void 폴백_키워드_검색은_제목_부분일치로_최신순_반환한다() {
+        // when
+        Page<Performance> result = performanceRepository.searchByKeyword("콘서트", null, null, PageRequest.of(0, 10));
+
+        // then: "콘서트"가 제목에 포함된 concertBusan(now), concertSeoul(-2d) 순
+        assertThat(result.getContent()).containsExactly(concertBusan, concertSeoul);
+    }
+
+    @Test
+    void 폴백_키워드_검색은_아티스트_부분일치도_매칭한다() {
+        // 세 공연 모두 artist="아티스트"
+        Page<Performance> result = performanceRepository.searchByKeyword("아티스트", null, null, PageRequest.of(0, 10));
+
+        assertThat(result.getTotalElements()).isEqualTo(3);
+    }
+
+    @Test
+    void 폴백_키워드_검색에_genre_region_필터가_함께_적용된다() {
+        Page<Performance> result = performanceRepository.searchByKeyword(
+                "콘서트", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).containsExactly(concertSeoul);
+    }
+
+    @Test
+    void 폴백_키워드가_없으면_필터만으로_조회한다() {
+        Page<Performance> result = performanceRepository.searchByKeyword(
+                null, PerformanceGenre.MUSICAL, null, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).containsExactly(musicalSeoul);
+    }
+
+    @Test
+    void 폴백_키워드_검색은_대소문자를_무시한다() {
+        Performance mixedCase = performanceRepository.save(
+                performanceOf("IU World Tour", PerformanceGenre.CONCERT, PerformanceRegion.SEOUL));
+
+        Page<Performance> result = performanceRepository.searchByKeyword("iu world", null, null, PageRequest.of(0, 10));
+
+        assertThat(result.getContent()).containsExactly(mixedCase);
+    }
+
     private Performance performanceOf(String title, PerformanceGenre genre, PerformanceRegion region) {
         return Performance.builder()
                 .title(title)

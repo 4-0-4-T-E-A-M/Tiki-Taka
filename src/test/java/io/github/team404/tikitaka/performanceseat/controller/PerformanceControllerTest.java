@@ -51,15 +51,15 @@ class PerformanceControllerTest {
     @Test
     void 키워드_검색을_공통_성공_응답으로_반환한다() throws Exception {
         Performance performance = performance(1L, "아이유 콘서트");
-        var page = new org.springframework.data.domain.PageImpl<>(
+        var response = new io.github.team404.tikitaka.performanceseat.dto.PerformanceSearchResponse(
                 List.of(io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse.from(performance)),
-                org.springframework.data.domain.PageRequest.of(0, 20), 1);
+                1L, 0, 20, false);
         given(performanceSearchService.search(
                 org.mockito.ArgumentMatchers.eq("아이유"),
                 org.mockito.ArgumentMatchers.isNull(),
                 org.mockito.ArgumentMatchers.isNull(),
                 any()))
-                .willReturn(page);
+                .willReturn(response);
 
         mockMvc.perform(get("/api/performances/search").param("q", "아이유"))
                 .andExpect(status().isOk())
@@ -68,7 +68,19 @@ class PerformanceControllerTest {
                 .andExpect(jsonPath("$.data.content[0].id").value(1))
                 .andExpect(jsonPath("$.data.content[0].title").value("아이유 콘서트"))
                 .andExpect(jsonPath("$.data.totalElements").value(1))
-                .andExpect(jsonPath("$.data.page").value(0));
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.degraded").value(false));
+    }
+
+    @Test
+    void 폴백_검색_응답은_degraded_true로_반환한다() throws Exception {
+        var response = new io.github.team404.tikitaka.performanceseat.dto.PerformanceSearchResponse(
+                List.of(), 0L, 0, 20, true);
+        given(performanceSearchService.search(any(), any(), any(), any())).willReturn(response);
+
+        mockMvc.perform(get("/api/performances/search").param("q", "아이유"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.degraded").value(true));
     }
 
     @Test
