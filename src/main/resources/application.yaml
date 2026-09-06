@@ -66,6 +66,14 @@ performance:
   search:
     # 공연 검색 전체 재색인 주기 — 이벤트 유실로 생긴 PostgreSQL↔ES 드리프트 복구용 안전망(#89)
     reindex-cron: "0 0 4 * * *"
+  ranking:
+    # 인기 공연 랭킹(#94). 조회 시 합산할 일(day) 버킷 수. 버킷 TTL은 이 값 + 1일
+    retention-days: 7
+    # 하루 지날수록 곱해지는 감쇠 계수 (오늘=1, 어제=0.85, 그저께=0.85^2 ...)
+    decay-factor: 0.85
+    # 점수 가중치 — 예매가 조회보다 훨씬 강한 인기 신호
+    view-weight: 1.0
+    reservation-weight: 10.0
 
 queue:
   admission:
