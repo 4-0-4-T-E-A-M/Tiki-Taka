@@ -66,7 +66,8 @@ class PerformanceDetailCacheVsDbBenchmarkIT {
                 PerformanceRegion.SEOUL, PerformanceGenre.CONCERT,
                 "이슈 #53 캐시 vs DB 응답속도 벤치마크용 데이터",
                 "https://example.com/poster.png",
-                List.of(new ScheduleCreateRequest(LocalDateTime.now().plusDays(30), List.of()))));
+                List.of(new ScheduleCreateRequest(
+                        LocalDateTime.now().plusDays(30), LocalDateTime.now().plusDays(1), List.of()))));
         Long id = performance.getId();
 
         try {
