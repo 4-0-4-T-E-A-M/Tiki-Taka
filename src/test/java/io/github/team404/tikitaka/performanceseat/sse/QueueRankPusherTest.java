@@ -48,6 +48,7 @@ class QueueRankPusherTest {
         when(waitingQueueService.getRank(1L, 10L)).thenReturn(2L);
         when(registry.lastSentRank(key)).thenReturn(3L);
         when(waitingQueueService.size(1L)).thenReturn(5L);
+        when(waitingQueueService.isAdmitted(1L, 10L)).thenReturn(false);
 
         // when
         newPusher().push(key, emitter, false);
@@ -62,6 +63,7 @@ class QueueRankPusherTest {
         // given
         when(waitingQueueService.getRank(1L, 10L)).thenReturn(3L);
         when(waitingQueueService.size(1L)).thenReturn(5L);
+        when(waitingQueueService.isAdmitted(1L, 10L)).thenReturn(true);
 
         // when
         newPusher().push(key, emitter, true);

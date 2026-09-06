@@ -52,6 +52,13 @@ tikitaka:
     # 수정/삭제는 PerformanceService가 evictDetail로 즉시 무효화해 최신성을 보완한다.
     performance-detail-ttl-ms: ${PERFORMANCE_DETAIL_CACHE_TTL_MS:900000}
 
+performance:
+  open:
+    # 오픈 시각이 지난 회차를 SCHEDULED → OPEN으로 전환하는 스케줄러 주기
+    poll-interval-ms: 1000
+    # 오픈 시점에 대기열에서 즉시 입장 허용할 인원. 점진적 증가는 7주차 안정성 이슈로 미룸
+    initial-admit-count: 100
+
 queue:
   sse:
     # 대기열 순번 재조회 주기 — 커넥션 전체를 순회하는 단일 스케줄 태스크의 간격

@@ -37,8 +37,17 @@ public class WaitingQueueService {
         return size == null ? 0 : size;
     }
 
-    // 입장 허용 기준 — admitCount는 호출 측(공연 오픈 스케줄러 등)이 넘겨준다.
+    // 입장 허용 여부 — 입장 허용 인원(admitCount)은 공연 오픈 스케줄러(#75)가 오픈 시점에 Redis에 설정한다.
+    // 오픈 전에는 admitCount가 0이라 아무도 허용되지 않는다.
+    public boolean isAdmitted(Long scheduleId, Long userId) {
+        return isAdmitted(scheduleId, userId, waitingQueueRepository.admitCount(scheduleId));
+    }
+
+    // admitCount를 직접 넘기는 오버로드 — 호출 측이 이미 값을 들고 있을 때.
     public boolean isAdmitted(Long scheduleId, Long userId, long admitCount) {
+        if (admitCount <= 0) {
+            return false;
+        }
         return getRank(scheduleId, userId) < admitCount;
     }
 

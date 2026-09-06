@@ -62,6 +62,7 @@ public class PerformanceService {
         PerformanceSchedule schedule = PerformanceSchedule.builder()
                 .performanceId(performanceId)
                 .performanceDatetime(scheduleRequest.performanceDatetime())
+                .openAt(scheduleRequest.openAt())
                 .build();
         performanceScheduleRepository.save(schedule);
 

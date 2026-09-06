@@ -78,6 +78,32 @@ class WaitingQueueServiceTest {
     }
 
     @Test
+    void 입장_허용_인원이_0이면_순번을_조회하지_않고_거부한다() {
+        // when & then
+        assertThat(waitingQueueService.isAdmitted(1L, 10L, 0L)).isFalse();
+        verify(waitingQueueRepository, never()).rank(1L, 10L);
+    }
+
+    @Test
+    void 입장_허용_여부는_Redis에_저장된_허용_인원을_기준으로_판단한다() {
+        // given — 오픈 스케줄러가 설정한 admitCount
+        when(waitingQueueRepository.admitCount(1L)).thenReturn(100L);
+        when(waitingQueueRepository.rank(1L, 10L)).thenReturn(42L);
+
+        // when & then
+        assertThat(waitingQueueService.isAdmitted(1L, 10L)).isTrue();
+    }
+
+    @Test
+    void 오픈_전이라_허용_인원이_설정되지_않았으면_입장이_거부된다() {
+        // given — admitCount 키 없음 → 0
+        when(waitingQueueRepository.admitCount(1L)).thenReturn(0L);
+
+        // when & then
+        assertThat(waitingQueueService.isAdmitted(1L, 10L)).isFalse();
+    }
+
+    @Test
     void 대기_인원이_없으면_0을_반환한다() {
         // given
         when(waitingQueueRepository.size(1L)).thenReturn(null);
