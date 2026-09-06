@@ -4,10 +4,16 @@ import io.github.team404.tikitaka.global.response.BaseResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse;
+import io.github.team404.tikitaka.performanceseat.dto.PerformanceSearchResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceUpdateRequest;
+import io.github.team404.tikitaka.performanceseat.entity.PerformanceGenre;
+import io.github.team404.tikitaka.performanceseat.entity.PerformanceRegion;
+import io.github.team404.tikitaka.performanceseat.search.PerformanceSearchService;
 import io.github.team404.tikitaka.performanceseat.service.PerformanceService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +23,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,6 +32,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class PerformanceController {
 
     private final PerformanceService performanceService;
+    private final PerformanceSearchService performanceSearchService;
+
+    // 키워드(q) 기반 공연 검색 — Elasticsearch(nori) 경로. genre/region은 선택 필터.
+    // 구조화 필터만 쓰는 조회는 QueryDSL 경로 소관(#86 역할 분리).
+    @GetMapping("/search")
+    public ResponseEntity<BaseResponse<PerformanceSearchResponse>> search(
+            @RequestParam(name = "q", required = false) String keyword,
+            @RequestParam(required = false) PerformanceGenre genre,
+            @RequestParam(required = false) PerformanceRegion region,
+            @PageableDefault(size = 20) Pageable pageable) {
+        PerformanceSearchResponse response = PerformanceSearchResponse.from(
+                performanceSearchService.search(keyword, genre, region, pageable));
+        return ResponseEntity.ok(BaseResponse.success("공연 검색에 성공했습니다.", response));
+    }
 
     @PostMapping
     public ResponseEntity<BaseResponse<PerformanceResponse>> create(@RequestBody PerformanceCreateRequest request) {

@@ -8,6 +8,7 @@ import io.github.team404.tikitaka.performanceseat.entity.PerformanceGenre;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceRegion;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.entity.ScheduleStatus;
+import io.github.team404.tikitaka.performanceseat.search.PerformanceSearchService;
 import io.github.team404.tikitaka.performanceseat.service.PerformanceService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,7 +43,33 @@ class PerformanceControllerTest {
     private PerformanceService performanceService;
 
     @MockitoBean
+    private PerformanceSearchService performanceSearchService;
+
+    @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Test
+    void 키워드_검색을_공통_성공_응답으로_반환한다() throws Exception {
+        Performance performance = performance(1L, "아이유 콘서트");
+        var page = new org.springframework.data.domain.PageImpl<>(
+                List.of(io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse.from(performance)),
+                org.springframework.data.domain.PageRequest.of(0, 20), 1);
+        given(performanceSearchService.search(
+                org.mockito.ArgumentMatchers.eq("아이유"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                any()))
+                .willReturn(page);
+
+        mockMvc.perform(get("/api/performances/search").param("q", "아이유"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.message").value("공연 검색에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].id").value(1))
+                .andExpect(jsonPath("$.data.content[0].title").value("아이유 콘서트"))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.page").value(0));
+    }
 
     @Test
     void 공연을_생성하고_공통_성공_응답으로_반환한다() throws Exception {

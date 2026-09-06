@@ -60,6 +60,9 @@ class PerformanceServiceTest {
     @Mock
     private PerformanceCacheRepository performanceCacheRepository;
 
+    @Mock
+    private io.github.team404.tikitaka.performanceseat.search.PerformanceEventPublisher performanceEventPublisher;
+
     @InjectMocks
     private PerformanceService performanceService;
 
@@ -83,6 +86,9 @@ class PerformanceServiceTest {
         verify(performanceScheduleRepository, times(1)).save(any(PerformanceSchedule.class));
         verify(sectionRepository, times(1)).save(any(Section.class));
         verify(seatRepository, times(2)).save(any());
+        // 검색 인덱스 동기화용 UPSERT 이벤트 발행 (관리 트랜잭션 없는 단위 테스트라 즉시 발행)
+        verify(performanceEventPublisher, times(1)).publish(
+                io.github.team404.tikitaka.global.kafka.event.PerformanceChangedEvent.upsert(performance.getId()));
     }
 
     @Test
@@ -136,6 +142,8 @@ class PerformanceServiceTest {
         verify(seatRepository, times(1)).deleteAllBySectionIdIn(List.of(100L));
         verify(sectionRepository, times(1)).deleteAllByScheduleIdIn(List.of(10L));
         verify(performanceScheduleRepository, times(1)).deleteAllByPerformanceId(1L);
+        verify(performanceEventPublisher, times(1)).publish(
+                io.github.team404.tikitaka.global.kafka.event.PerformanceChangedEvent.delete(1L));
         verify(performanceRepository, times(1)).delete(performance);
         verify(performanceCacheRepository, times(1)).evictDetail(1L);
     }

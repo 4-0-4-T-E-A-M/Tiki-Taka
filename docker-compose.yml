@@ -32,8 +32,11 @@ services:
       retries: 5
 
   elasticsearch:
-    # 8.18.x — Spring Boot 3.5.16이 관리하는 elasticsearch-java 클라이언트(8.18.8)와 맞춤
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.18.8
+    # 8.18.x — Spring Boot 3.5.16이 관리하는 elasticsearch-java 클라이언트(8.18.8)와 맞춤.
+    # 한국어 형태소 분석기(nori) 플러그인을 포함한 커스텀 이미지 (docker/elasticsearch/Dockerfile, #90)
+    build:
+      context: ./docker/elasticsearch
+    image: tikitaka-elasticsearch:8.18.8-nori
     container_name: tikitaka-elasticsearch
     restart: unless-stopped
     environment:

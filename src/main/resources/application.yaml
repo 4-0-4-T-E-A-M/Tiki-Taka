@@ -13,6 +13,7 @@ spring:
     uris: ${ELASTICSEARCH_URIS}
     connection-timeout: 3s
     socket-timeout: 10s
+    socket-keep-alive: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
@@ -62,6 +63,9 @@ performance:
     poll-interval-ms: 1000
     # 오픈 시점에 대기열에서 즉시 입장 허용할 인원. 점진적 증가는 7주차 안정성 이슈로 미룸
     initial-admit-count: 100
+  search:
+    # 공연 검색 전체 재색인 주기 — 이벤트 유실로 생긴 PostgreSQL↔ES 드리프트 복구용 안전망(#89)
+    reindex-cron: "0 0 4 * * *"
 
 queue:
   admission:
