@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
@@ -15,8 +16,17 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 // user/schedule/simulation 엔티티가 아직 없어 연관관계 대신 FK id만 보관
+// 단일 컬럼 인덱스 5개는 #70 EXPLAIN 분석에서 실측 검증됨(docs/perf/reservation-search-explain-analysis.md).
+// docs/db/ddl.sql에도 같은 인덱스가 문서화되어 있었지만 여기 선언이 없어 ddl-auto=update가
+// 실제로는 만들지 않고 있었음(PK만 존재) — 이 애노테이션이 그 갭을 메운다.
 @Entity
-@Table(name = "reservations")
+@Table(name = "reservations", indexes = {
+        @Index(name = "idx_reservations_user_id", columnList = "user_id"),
+        @Index(name = "idx_reservations_simulation_id", columnList = "simulation_id"),
+        @Index(name = "idx_reservations_schedule_id", columnList = "schedule_id"),
+        @Index(name = "idx_reservations_status", columnList = "status"),
+        @Index(name = "idx_reservations_created_at", columnList = "created_at")
+})
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Reservation {

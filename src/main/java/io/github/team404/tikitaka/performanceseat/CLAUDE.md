@@ -29,6 +29,15 @@
 - 서비스 레이어는 Mockito 기반 단위 테스트(`ReservationServiceTest` 패턴 참고).
 - 대기열(Redis Sorted Set)·캐시 관련 코드는 3~4주차부터 Testcontainers 기반 통합 테스트 필요.
 
+## QueryDSL 리포지토리 구현 시 (이슈 #71)
+- 예매 도메인 QueryDSL 작업(#69, PR #79)에서 겪은 문제: `JPAQueryFactory`를 `QuerydslConfig`
+  같은 공용 `@Bean`으로 만들어 주입받으면, `@DataJpaTest` 같은 테스트 슬라이스는 일반
+  `@Configuration`을 로드하지 않아 컨텍스트 로딩이 실패한다. 이 Repository를 스캔하는
+  *다른 도메인*의 슬라이스 테스트까지 같이 깨짐.
+- 그래서 공용 빈을 새로 만들지 말고, Custom Repository 구현체 생성자에서 `EntityManager`를
+  직접 받아 그 안에서 `new JPAQueryFactory(entityManager)`로 생성할 것 (`EntityManager`는
+  슬라이스에도 항상 존재). `booking/repository/ReservationRepositoryImpl.java` 참고.
+
 ## 이슈 작업 시 기본 지시
 1. `gh issue view {번호}`로 이슈 확인 후 구현 범위를 요약해서 먼저 보여줄 것
 2. 현재 주차가 뭔지 애매하면 `docs/ROADMAP.md`에서 해당 이슈가 속한 주차를 찾아서 그 주의
