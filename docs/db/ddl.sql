@@ -237,7 +237,9 @@ CREATE UNIQUE INDEX ON "users" ("provider", "provider_id");
 
 CREATE INDEX ON "performances" ("genre");
 
-CREATE INDEX ON "performances" ("region");
+-- #73 인덱스 설계 결정: region 단독 조회와 region+genre 조합 조회를 복합 인덱스 하나로 커버
+-- (performances(region) 단일 인덱스는 이 복합 인덱스의 접두사 스캔으로 대체되므로 두지 않음)
+CREATE INDEX ON "performances" ("region", "genre");
 
 CREATE INDEX ON "performance_schedules" ("performance_id");
 
