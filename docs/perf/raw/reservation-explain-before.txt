@@ -1,0 +1,75 @@
+=== Q1: user_id 단독 ===
+ Limit  (cost=1216.17..1216.19 rows=10 width=77) (actual time=4.161..4.164 rows=14 loops=1)
+   Buffers: shared hit=594
+   ->  Sort  (cost=1216.17..1216.19 rows=10 width=77) (actual time=4.159..4.161 rows=14 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: shared hit=594
+         ->  Seq Scan on reservations  (cost=0.00..1216.00 rows=10 width=77) (actual time=0.381..4.137 rows=14 loops=1)
+               Filter: (user_id = 123)
+               Rows Removed by Filter: 49986
+               Buffers: shared hit=591
+ Planning:
+   Buffers: shared hit=109 read=1
+ Planning Time: 0.604 ms
+ Execution Time: 4.221 ms
+
+=== Q2: status 단독 (선택도 낮음, 20%) ===
+ Limit  (cost=1541.25..1541.30 rows=20 width=77) (actual time=6.170..6.173 rows=20 loops=1)
+   Buffers: shared hit=591
+   ->  Sort  (cost=1541.25..1571.81 rows=12223 width=77) (actual time=6.167..6.169 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 29kB
+         Buffers: shared hit=591
+         ->  Seq Scan on reservations  (cost=0.00..1216.00 rows=12223 width=77) (actual time=0.009..5.165 rows=12283 loops=1)
+               Filter: ((status)::text = 'CONFIRMED'::text)
+               Rows Removed by Filter: 37717
+               Buffers: shared hit=591
+ Planning:
+   Buffers: shared hit=8
+ Planning Time: 0.107 ms
+ Execution Time: 6.189 ms
+
+=== Q3: user_id + status 복합 ===
+ Limit  (cost=1341.01..1341.02 rows=2 width=77) (actual time=3.469..3.472 rows=6 loops=1)
+   Buffers: shared hit=591
+   ->  Sort  (cost=1341.01..1341.02 rows=2 width=77) (actual time=3.468..3.469 rows=6 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=591
+         ->  Seq Scan on reservations  (cost=0.00..1341.00 rows=2 width=77) (actual time=0.367..3.459 rows=6 loops=1)
+               Filter: ((user_id = 123) AND ((status)::text = 'CONFIRMED'::text))
+               Rows Removed by Filter: 49994
+               Buffers: shared hit=591
+ Planning Time: 0.067 ms
+ Execution Time: 3.486 ms
+
+=== Q4: schedule_id + status + 기간 복합 ===
+ Limit  (cost=1966.02..1966.03 rows=3 width=77) (actual time=2.799..2.800 rows=3 loops=1)
+   Buffers: shared hit=591
+   ->  Sort  (cost=1966.02..1966.03 rows=3 width=77) (actual time=2.798..2.799 rows=3 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=591
+         ->  Seq Scan on reservations  (cost=0.00..1966.00 rows=3 width=77) (actual time=1.139..2.790 rows=3 loops=1)
+               Filter: ((schedule_id = 250) AND ((status)::text = 'CONFIRMED'::text) AND (created_at <= now()) AND (created_at >= (now() - '7 days'::interval)))
+               Rows Removed by Filter: 49997
+               Buffers: shared hit=591
+ Planning:
+   Buffers: shared hit=10
+ Planning Time: 0.123 ms
+ Execution Time: 2.818 ms
+
+=== Q5: 기간(createdAt range) 단독 ===
+ Limit  (cost=1869.19..1869.24 rows=20 width=77) (actual time=9.022..9.025 rows=20 loops=1)
+   Buffers: shared hit=591
+   ->  Sort  (cost=1869.19..1883.58 rows=5757 width=77) (actual time=9.022..9.023 rows=20 loops=1)
+         Sort Key: created_at DESC
+         Sort Method: top-N heapsort  Memory: 29kB
+         Buffers: shared hit=591
+         ->  Seq Scan on reservations  (cost=0.00..1716.00 rows=5757 width=77) (actual time=0.005..8.660 rows=5798 loops=1)
+               Filter: ((created_at <= now()) AND (created_at >= (now() - '7 days'::interval)))
+               Rows Removed by Filter: 44202
+               Buffers: shared hit=591
+ Planning Time: 0.055 ms
+ Execution Time: 9.034 ms

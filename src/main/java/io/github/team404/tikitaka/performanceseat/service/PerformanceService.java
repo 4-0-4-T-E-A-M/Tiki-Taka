@@ -1,6 +1,7 @@
 package io.github.team404.tikitaka.performanceseat.service;
 
 import io.github.team404.tikitaka.booking.repository.ReservationRepository;
+import io.github.team404.tikitaka.global.kafka.event.PerformanceChangedEvent;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceCreateRequest;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceDetailResponse;
 import io.github.team404.tikitaka.performanceseat.dto.PerformanceUpdateRequest;
@@ -12,16 +13,20 @@ import io.github.team404.tikitaka.performanceseat.entity.Performance;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.entity.Section;
+import io.github.team404.tikitaka.performanceseat.ranking.PopularPerformanceRankingService;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceCacheRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceRepository;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceScheduleRepository;
 import io.github.team404.tikitaka.performanceseat.repository.SeatRepository;
 import io.github.team404.tikitaka.performanceseat.repository.SectionRepository;
+import io.github.team404.tikitaka.performanceseat.search.PerformanceEventPublisher;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -34,6 +39,8 @@ public class PerformanceService {
     private final SeatRepository seatRepository;
     private final ReservationRepository reservationRepository;
     private final PerformanceCacheRepository performanceCacheRepository;
+    private final PerformanceEventPublisher performanceEventPublisher;
+    private final PopularPerformanceRankingService popularPerformanceRankingService;
 
     @Transactional
     public Performance createPerformance(PerformanceCreateRequest request) {
@@ -55,6 +62,7 @@ public class PerformanceService {
             }
         }
 
+        publishAfterCommit(PerformanceChangedEvent.upsert(performance.getId()));
         return performance;
     }
 
@@ -62,6 +70,7 @@ public class PerformanceService {
         PerformanceSchedule schedule = PerformanceSchedule.builder()
                 .performanceId(performanceId)
                 .performanceDatetime(scheduleRequest.performanceDatetime())
+                .openAt(scheduleRequest.openAt())
                 .build();
         performanceScheduleRepository.save(schedule);
 
@@ -112,6 +121,7 @@ public class PerformanceService {
                 request.description(),
                 request.posterUrl());
         performanceCacheRepository.evictDetail(performanceId);
+        publishAfterCommit(PerformanceChangedEvent.upsert(performanceId));
         return performance;
     }
 
@@ -136,6 +146,22 @@ public class PerformanceService {
         performanceScheduleRepository.deleteAllByPerformanceId(performanceId);
         performanceRepository.delete(performance);
         performanceCacheRepository.evictDetail(performanceId);
+        publishAfterCommit(PerformanceChangedEvent.delete(performanceId));
+    }
+
+    // 검색 인덱스 동기화 이벤트는 커밋 이후에 발행한다 — 롤백된 트랜잭션의 변경을 색인에 흘리지 않기 위함.
+    // 관리되는 트랜잭션이 없으면(테스트 등) 즉시 발행으로 폴백한다.
+    private void publishAfterCommit(PerformanceChangedEvent event) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    performanceEventPublisher.publish(event);
+                }
+            });
+        } else {
+            performanceEventPublisher.publish(event);
+        }
     }
 
     @Transactional(readOnly = true)
@@ -159,8 +185,11 @@ public class PerformanceService {
     // 묶어 캐싱한다(캐시 대상 범위 근거는 이슈 #56 참고).
     @Transactional(readOnly = true)
     public PerformanceDetailResponse getPerformanceDetail(Long performanceId) {
-        return performanceCacheRepository.findDetail(performanceId)
+        PerformanceDetailResponse detail = performanceCacheRepository.findDetail(performanceId)
                 .orElseGet(() -> loadAndCacheDetail(performanceId));
+        // 인기 랭킹 조회수 반영 — 캐시 히트 여부와 무관하게 "상세 진입"마다 카운트한다 (#94).
+        popularPerformanceRankingService.recordView(performanceId);
+        return detail;
     }
 
     private PerformanceDetailResponse loadAndCacheDetail(Long performanceId) {

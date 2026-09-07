@@ -8,6 +8,7 @@ import io.github.team404.tikitaka.performanceseat.entity.PerformanceGenre;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceRegion;
 import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.entity.ScheduleStatus;
+import io.github.team404.tikitaka.performanceseat.search.PerformanceSearchService;
 import io.github.team404.tikitaka.performanceseat.service.PerformanceService;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -42,7 +43,45 @@ class PerformanceControllerTest {
     private PerformanceService performanceService;
 
     @MockitoBean
+    private PerformanceSearchService performanceSearchService;
+
+    @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Test
+    void 키워드_검색을_공통_성공_응답으로_반환한다() throws Exception {
+        Performance performance = performance(1L, "아이유 콘서트");
+        var response = new io.github.team404.tikitaka.performanceseat.dto.PerformanceSearchResponse(
+                List.of(io.github.team404.tikitaka.performanceseat.dto.PerformanceResponse.from(performance)),
+                1L, 0, 20, false);
+        given(performanceSearchService.search(
+                org.mockito.ArgumentMatchers.eq("아이유"),
+                org.mockito.ArgumentMatchers.isNull(),
+                org.mockito.ArgumentMatchers.isNull(),
+                any()))
+                .willReturn(response);
+
+        mockMvc.perform(get("/api/performances/search").param("q", "아이유"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value("SUCCESS"))
+                .andExpect(jsonPath("$.message").value("공연 검색에 성공했습니다."))
+                .andExpect(jsonPath("$.data.content[0].id").value(1))
+                .andExpect(jsonPath("$.data.content[0].title").value("아이유 콘서트"))
+                .andExpect(jsonPath("$.data.totalElements").value(1))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.degraded").value(false));
+    }
+
+    @Test
+    void 폴백_검색_응답은_degraded_true로_반환한다() throws Exception {
+        var response = new io.github.team404.tikitaka.performanceseat.dto.PerformanceSearchResponse(
+                List.of(), 0L, 0, 20, true);
+        given(performanceSearchService.search(any(), any(), any(), any())).willReturn(response);
+
+        mockMvc.perform(get("/api/performances/search").param("q", "아이유"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.degraded").value(true));
+    }
 
     @Test
     void 공연을_생성하고_공통_성공_응답으로_반환한다() throws Exception {
@@ -145,6 +184,7 @@ class PerformanceControllerTest {
         PerformanceSchedule schedule = mock(PerformanceSchedule.class);
         given(schedule.getId()).willReturn(id);
         given(schedule.getPerformanceDatetime()).willReturn(LocalDateTime.of(2026, 9, 1, 19, 0));
+        given(schedule.getOpenAt()).willReturn(LocalDateTime.of(2026, 8, 25, 20, 0));
         given(schedule.getStatus()).willReturn(ScheduleStatus.SCHEDULED);
         return schedule;
     }

@@ -13,6 +13,7 @@ public class SseEmitterRegistry {
 
     private final Map<QueueConnectionKey, SseEmitter> emitters = new ConcurrentHashMap<>();
     private final Map<QueueConnectionKey, Long> lastSentRanks = new ConcurrentHashMap<>();
+    private final Map<QueueConnectionKey, Boolean> lastSentAdmitted = new ConcurrentHashMap<>();
 
     public void register(QueueConnectionKey key, SseEmitter emitter) {
         emitters.put(key, emitter);
@@ -29,12 +30,19 @@ public class SseEmitterRegistry {
         return lastSentRanks.get(key);
     }
 
-    public void updateLastSentRank(QueueConnectionKey key, long rank) {
+    public Boolean lastSentAdmitted(QueueConnectionKey key) {
+        return lastSentAdmitted.get(key);
+    }
+
+    // 마지막으로 push한 순번과 입장 허용 여부를 함께 기록한다 — 둘 중 하나라도 바뀌면 다시 push한다(#102).
+    public void updateLastSent(QueueConnectionKey key, long rank, boolean admitted) {
         lastSentRanks.put(key, rank);
+        lastSentAdmitted.put(key, admitted);
     }
 
     private void remove(QueueConnectionKey key) {
         emitters.remove(key);
         lastSentRanks.remove(key);
+        lastSentAdmitted.remove(key);
     }
 }

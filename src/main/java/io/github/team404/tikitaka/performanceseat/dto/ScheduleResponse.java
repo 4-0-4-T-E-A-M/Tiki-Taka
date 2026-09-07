@@ -7,12 +7,14 @@ import java.time.LocalDateTime;
 public record ScheduleResponse(
         Long id,
         LocalDateTime performanceDatetime,
+        LocalDateTime openAt,
         ScheduleStatus status
 ) {
     public static ScheduleResponse from(PerformanceSchedule schedule) {
         return new ScheduleResponse(
                 schedule.getId(),
                 schedule.getPerformanceDatetime(),
+                schedule.getOpenAt(),
                 schedule.getStatus()
         );
     }

@@ -9,6 +9,11 @@ spring:
     redis:
       host: ${REDIS_HOST}
       port: ${REDIS_PORT}
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS}
+    connection-timeout: 3s
+    socket-timeout: 10s
+    socket-keep-alive: true
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
     producer:
@@ -52,7 +57,28 @@ tikitaka:
     # 수정/삭제는 PerformanceService가 evictDetail로 즉시 무효화해 최신성을 보완한다.
     performance-detail-ttl-ms: ${PERFORMANCE_DETAIL_CACHE_TTL_MS:900000}
 
+performance:
+  open:
+    # 오픈 시각이 지난 회차를 SCHEDULED → OPEN으로 전환하는 스케줄러 주기
+    poll-interval-ms: 1000
+    # 오픈 시점에 대기열에서 즉시 입장 허용할 인원. 점진적 증가는 7주차 안정성 이슈로 미룸
+    initial-admit-count: 100
+  search:
+    # 공연 검색 전체 재색인 주기 — 이벤트 유실로 생긴 PostgreSQL↔ES 드리프트 복구용 안전망(#89)
+    reindex-cron: "0 0 4 * * *"
+  ranking:
+    # 인기 공연 랭킹(#94). 조회 시 합산할 일(day) 버킷 수. 버킷 TTL은 이 값 + 1일
+    retention-days: 7
+    # 하루 지날수록 곱해지는 감쇠 계수 (오늘=1, 어제=0.85, 그저께=0.85^2 ...)
+    decay-factor: 0.85
+    # 점수 가중치 — 예매가 조회보다 훨씬 강한 인기 신호
+    view-weight: 1.0
+    reservation-weight: 10.0
+
 queue:
+  admission:
+    # 열린 회차의 대기열 앞에서부터 사용자를 통과(admitted)시키는 스케줄러 주기(#102)
+    poll-interval-ms: 1000
   sse:
     # 대기열 순번 재조회 주기 — 커넥션 전체를 순회하는 단일 스케줄 태스크의 간격
     poll-interval-ms: 1000

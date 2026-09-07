@@ -14,8 +14,11 @@ import static org.mockito.Mockito.when;
 import io.github.team404.tikitaka.booking.dto.ReservationCreateRequest;
 import io.github.team404.tikitaka.booking.entity.Reservation;
 import io.github.team404.tikitaka.booking.entity.ReservationSeat;
+import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.booking.repository.ReservationRepository;
 import io.github.team404.tikitaka.booking.repository.ReservationSeatRepository;
+import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
+import io.github.team404.tikitaka.global.kafka.producer.KafkaEventProducer;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.entity.SeatGrade;
 import io.github.team404.tikitaka.performanceseat.entity.SeatStatus;
@@ -26,6 +29,7 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -52,6 +56,9 @@ class ReservationServiceTest {
     @Mock
     private RLock rLock;
 
+    @Mock
+    private KafkaEventProducer kafkaEventProducer;
+
     @InjectMocks
     private ReservationService reservationService;
 
@@ -77,6 +84,30 @@ class ReservationServiceTest {
     }
 
     @Test
+    void 예매_생성에_성공하면_예매_완료_Kafka_이벤트가_발행된다() throws InterruptedException {
+        // given
+        Seat seat = seatOf(1L);
+        ReservationCreateRequest request = new ReservationCreateRequest(1L, 1L, 1L, List.of(1L));
+        when(redissonClient.getLock(anyString())).thenReturn(rLock);
+        when(rLock.tryLock(anyLong(), anyLong(), any(TimeUnit.class))).thenReturn(true);
+        when(seatRepository.findAllById(request.seatIds())).thenReturn(List.of(seat));
+
+        // when
+        Reservation reservation = reservationService.createReservation(request);
+
+        // then
+        ArgumentCaptor<ReservationEvent> eventCaptor = ArgumentCaptor.forClass(ReservationEvent.class);
+        verify(kafkaEventProducer, times(1)).send(eventCaptor.capture());
+        ReservationEvent event = eventCaptor.getValue();
+        assertThat(event.eventId()).isNotNull();
+        assertThat(event.reservationId()).isEqualTo(reservation.getId());
+        assertThat(event.userId()).isEqualTo(1L);
+        assertThat(event.scheduleId()).isEqualTo(1L);
+        assertThat(event.status()).isEqualTo(ReservationStatus.PENDING_PAYMENT);
+        assertThat(event.occurredAt()).isNotNull();
+    }
+
+    @Test
     void 존재하지_않는_좌석이_포함되면_예외가_발생한다() throws InterruptedException {
         // given
         ReservationCreateRequest request = new ReservationCreateRequest(1L, 1L, 1L, List.of(1L, 2L));
@@ -88,6 +119,7 @@ class ReservationServiceTest {
         assertThatThrownBy(() -> reservationService.createReservation(request))
                 .isInstanceOf(ResponseStatusException.class);
         verify(reservationRepository, never()).save(any());
+        verify(kafkaEventProducer, never()).send(any());
     }
 
     @Test
@@ -99,6 +131,7 @@ class ReservationServiceTest {
         assertThatThrownBy(() -> reservationService.createReservation(request))
                 .isInstanceOf(ResponseStatusException.class);
         verify(seatRepository, never()).findAllById(anyList());
+        verify(kafkaEventProducer, never()).send(any());
     }
 
     @Test
@@ -117,6 +150,7 @@ class ReservationServiceTest {
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
         verify(reservationRepository, never()).save(any());
+        verify(kafkaEventProducer, never()).send(any());
     }
 
     @Test

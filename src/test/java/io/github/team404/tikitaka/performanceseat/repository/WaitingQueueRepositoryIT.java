@@ -65,6 +65,52 @@ class WaitingQueueRepositoryIT {
         assertThat(waitingQueueRepository.size(scheduleId)).isEqualTo(3L);
     }
 
+    @Test
+    void 앞에서부터_통과시키면_대기열에서_빠지고_뒤_순번이_당겨진다() {
+        // given — 5명 대기
+        long scheduleId = System.nanoTime();
+        for (long userId = 1; userId <= 5; userId++) {
+            waitingQueueRepository.addIfAbsent(scheduleId, userId);
+        }
+
+        // when — 앞 2명 통과
+        int moved = waitingQueueRepository.admitFront(scheduleId, 2);
+
+        // then
+        assertThat(moved).isEqualTo(2);
+        assertThat(waitingQueueRepository.size(scheduleId)).isEqualTo(3L);
+        assertThat(waitingQueueRepository.admittedSize(scheduleId)).isEqualTo(2L);
+        assertThat(waitingQueueRepository.isAdmitted(scheduleId, 1L)).isTrue();
+        assertThat(waitingQueueRepository.isAdmitted(scheduleId, 2L)).isTrue();
+        assertThat(waitingQueueRepository.isAdmitted(scheduleId, 3L)).isFalse();
+        // 3번 사용자의 순번이 2 → 0으로 당겨짐
+        assertThat(waitingQueueRepository.rank(scheduleId, 3L)).isEqualTo(0L);
+    }
+
+    @Test
+    void 대기열보다_많은_수를_통과시키면_남은_인원만_옮긴다() {
+        // given
+        long scheduleId = System.nanoTime();
+        waitingQueueRepository.addIfAbsent(scheduleId, 1L);
+        waitingQueueRepository.addIfAbsent(scheduleId, 2L);
+
+        // when
+        int moved = waitingQueueRepository.admitFront(scheduleId, 10);
+
+        // then
+        assertThat(moved).isEqualTo(2);
+        assertThat(waitingQueueRepository.size(scheduleId)).isZero();
+        assertThat(waitingQueueRepository.admittedSize(scheduleId)).isEqualTo(2L);
+    }
+
+    @Test
+    void 빈_대기열을_통과시키면_아무것도_옮기지_않는다() {
+        long scheduleId = System.nanoTime();
+
+        assertThat(waitingQueueRepository.admitFront(scheduleId, 5)).isZero();
+        assertThat(waitingQueueRepository.admittedSize(scheduleId)).isZero();
+    }
+
     @Import({RedisAutoConfiguration.class, WaitingQueueRepository.class})
     static class TestConfig {
     }

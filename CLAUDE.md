@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ./gradlew test --tests "*.TikitakaApplicationTests.contextLoads"
 ```
 
-Environment: copy `.env.example` to `.env` and fill in `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` (PostgreSQL) and `REDIS_HOST` / `REDIS_PORT` (Redis). `.env` is loaded automatically via `spring-dotenv` (`me.paulschwarz:springboot3-dotenv`) — no need to export env vars manually. `docker compose up -d` starts local PostgreSQL and Redis containers (see `docker-compose.yml`).
+Environment: copy `.env.example` to `.env` and fill in `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` (PostgreSQL), `REDIS_HOST` / `REDIS_PORT` (Redis), `KAFKA_BOOTSTRAP_SERVERS` (Kafka), `ELASTICSEARCH_URIS` (Elasticsearch, e.g. `http://localhost:9200`). `.env` is loaded automatically via `spring-dotenv` (`me.paulschwarz:springboot3-dotenv`) — no need to export env vars manually. `docker compose up -d` starts local PostgreSQL / Redis / Kafka / Elasticsearch containers (see `docker-compose.yml` and `docs/infra/elasticsearch.md`).
 
 ## Project
 

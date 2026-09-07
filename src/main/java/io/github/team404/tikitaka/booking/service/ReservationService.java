@@ -5,14 +5,18 @@ import io.github.team404.tikitaka.booking.entity.Reservation;
 import io.github.team404.tikitaka.booking.entity.ReservationSeat;
 import io.github.team404.tikitaka.booking.repository.ReservationRepository;
 import io.github.team404.tikitaka.booking.repository.ReservationSeatRepository;
+import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
+import io.github.team404.tikitaka.global.kafka.producer.KafkaEventProducer;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.repository.SeatRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.springframework.http.HttpStatus;
@@ -23,6 +27,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.server.ResponseStatusException;
 
 // 좌석 홀드 + 예매 생성을 한 트랜잭션으로 묶고, 좌석 단위 분산 락(seat-lock:{seatId})으로 경합을 막는다
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ReservationService {
@@ -38,6 +43,7 @@ public class ReservationService {
     private final ReservationSeatRepository reservationSeatRepository;
     private final SeatRepository seatRepository;
     private final RedissonClient redissonClient;
+    private final KafkaEventProducer kafkaEventProducer;
 
     @Transactional
     public Reservation createReservation(ReservationCreateRequest request) {
@@ -112,11 +118,42 @@ public class ReservationService {
                         .build());
             }
 
+            ReservationEvent reservationCreatedEvent = new ReservationEvent(
+                    UUID.randomUUID(),
+                    reservation.getId(),
+                    reservation.getUserId(),
+                    reservation.getScheduleId(),
+                    reservation.getStatus(),
+                    LocalDateTime.now());
+
+            // 커밋 성공이 확정된 뒤에만 이벤트를 발행해야 "롤백된 예매는 발행 안 됨"이 보장된다.
+            // 관리되는 트랜잭션이 있으면 afterCommit에 위임(발행 실패가 이미 끝난 커밋을 되돌릴 수 없음),
+            // 없으면(단위 테스트 등) 여기서 즉시 발행한다.
+            if (transactionActive) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        publishReservationCreatedEvent(reservationCreatedEvent);
+                    }
+                });
+            } else {
+                publishReservationCreatedEvent(reservationCreatedEvent);
+            }
+
             return reservation;
         } finally {
             if (!transactionActive) {
                 unlockAll(acquiredLocks);
             }
+        }
+    }
+
+    // 예매 완료 이벤트 발행은 예매 자체의 성패에 영향을 줘선 안 되므로 실패를 삼키고 로그만 남긴다.
+    private void publishReservationCreatedEvent(ReservationEvent event) {
+        try {
+            kafkaEventProducer.send(event);
+        } catch (Exception e) {
+            log.error("예매 완료 이벤트 발행 실패. reservationId={}", event.reservationId(), e);
         }
     }
 
