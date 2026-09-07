@@ -10,6 +10,7 @@ import io.github.team404.tikitaka.performanceseat.entity.PerformanceSchedule;
 import io.github.team404.tikitaka.performanceseat.repository.PerformanceScheduleRepository;
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -19,6 +20,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class ReservationRankingConsumerTest {
+
+    private static final UUID RANKING_EVENT_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000201");
 
     @Mock
     private PopularPerformanceRankingService rankingService;
@@ -30,7 +34,7 @@ class ReservationRankingConsumerTest {
     private ReservationRankingConsumer consumer;
 
     private ReservationEvent event(Long scheduleId, ReservationStatus status) {
-        return new ReservationEvent(1L, 10L, scheduleId, status, LocalDateTime.now());
+        return new ReservationEvent(RANKING_EVENT_ID, 1L, 10L, scheduleId, status, LocalDateTime.now());
     }
 
     private PerformanceSchedule scheduleWithPerformanceId(long performanceId) {

@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -117,6 +118,14 @@ public class ReservationService {
                         .build());
             }
 
+            ReservationEvent reservationCreatedEvent = new ReservationEvent(
+                    UUID.randomUUID(),
+                    reservation.getId(),
+                    reservation.getUserId(),
+                    reservation.getScheduleId(),
+                    reservation.getStatus(),
+                    LocalDateTime.now());
+
             // 커밋 성공이 확정된 뒤에만 이벤트를 발행해야 "롤백된 예매는 발행 안 됨"이 보장된다.
             // 관리되는 트랜잭션이 있으면 afterCommit에 위임(발행 실패가 이미 끝난 커밋을 되돌릴 수 없음),
             // 없으면(단위 테스트 등) 여기서 즉시 발행한다.
@@ -124,11 +133,11 @@ public class ReservationService {
                 TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
                     @Override
                     public void afterCommit() {
-                        publishReservationCreatedEvent(reservation);
+                        publishReservationCreatedEvent(reservationCreatedEvent);
                     }
                 });
             } else {
-                publishReservationCreatedEvent(reservation);
+                publishReservationCreatedEvent(reservationCreatedEvent);
             }
 
             return reservation;
@@ -140,16 +149,11 @@ public class ReservationService {
     }
 
     // 예매 완료 이벤트 발행은 예매 자체의 성패에 영향을 줘선 안 되므로 실패를 삼키고 로그만 남긴다.
-    private void publishReservationCreatedEvent(Reservation reservation) {
+    private void publishReservationCreatedEvent(ReservationEvent event) {
         try {
-            kafkaEventProducer.send(new ReservationEvent(
-                    reservation.getId(),
-                    reservation.getUserId(),
-                    reservation.getScheduleId(),
-                    reservation.getStatus(),
-                    LocalDateTime.now()));
+            kafkaEventProducer.send(event);
         } catch (Exception e) {
-            log.error("예매 완료 이벤트 발행 실패. reservationId={}", reservation.getId(), e);
+            log.error("예매 완료 이벤트 발행 실패. reservationId={}", event.reservationId(), e);
         }
     }
 

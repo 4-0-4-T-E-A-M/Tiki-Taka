@@ -11,6 +11,7 @@ import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.topic.KafkaTopics;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,11 @@ import org.springframework.kafka.support.SendResult;
 @ExtendWith(MockitoExtension.class)
 class KafkaEventProducerTest {
 
+    private static final UUID SUCCESS_EVENT_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000101");
+    private static final UUID FAILURE_EVENT_ID =
+            UUID.fromString("00000000-0000-0000-0000-000000000102");
+
     @Mock
     private KafkaTemplate<String, ReservationEvent> kafkaTemplate;
 
@@ -31,7 +37,7 @@ class KafkaEventProducerTest {
         // given
         KafkaEventProducer producer = new KafkaEventProducer(kafkaTemplate);
         ReservationEvent event = new ReservationEvent(
-                1L, 10L, 100L, ReservationStatus.PENDING_PAYMENT, LocalDateTime.now());
+                SUCCESS_EVENT_ID, 1L, 10L, 100L, ReservationStatus.PENDING_PAYMENT, LocalDateTime.now());
         SendResult<String, ReservationEvent> sendResult = mock(SendResult.class);
         when(sendResult.getRecordMetadata()).thenReturn(mock(RecordMetadata.class));
         when(kafkaTemplate.send(anyString(), anyString(), any(ReservationEvent.class)))
@@ -49,7 +55,7 @@ class KafkaEventProducerTest {
         // given: 브로커 장애 등으로 발행 자체가 실패하는 상황을 흉내낸다
         KafkaEventProducer producer = new KafkaEventProducer(kafkaTemplate);
         ReservationEvent event = new ReservationEvent(
-                1L, 10L, 100L, ReservationStatus.PENDING_PAYMENT, LocalDateTime.now());
+                FAILURE_EVENT_ID, 1L, 10L, 100L, ReservationStatus.PENDING_PAYMENT, LocalDateTime.now());
         when(kafkaTemplate.send(anyString(), anyString(), any(ReservationEvent.class)))
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("broker down")));
 

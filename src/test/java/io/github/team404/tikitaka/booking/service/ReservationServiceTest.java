@@ -99,6 +99,7 @@ class ReservationServiceTest {
         ArgumentCaptor<ReservationEvent> eventCaptor = ArgumentCaptor.forClass(ReservationEvent.class);
         verify(kafkaEventProducer, times(1)).send(eventCaptor.capture());
         ReservationEvent event = eventCaptor.getValue();
+        assertThat(event.eventId()).isNotNull();
         assertThat(event.reservationId()).isEqualTo(reservation.getId());
         assertThat(event.userId()).isEqualTo(1L);
         assertThat(event.scheduleId()).isEqualTo(1L);
