@@ -43,3 +43,8 @@ jwt:
 tikitaka:
   cache:
     performance-detail-ttl-ms: 900000
+  kafka:
+    consumer:
+      retry:
+        interval-ms: 1000
+        max-retries: 2

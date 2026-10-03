@@ -32,8 +32,9 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     consumer:
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
       properties:
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
         spring.json.trusted.packages: io.github.team404.tikitaka.global.kafka.event
   jpa:
     hibernate:
@@ -63,6 +64,11 @@ jwt:
   refresh-token-expiry: ${JWT_REFRESH_TOKEN_EXPIRY:604800000}
 
 tikitaka:
+  kafka:
+    consumer:
+      retry:
+        interval-ms: ${KAFKA_CONSUMER_RETRY_INTERVAL_MS:1000}
+        max-retries: ${KAFKA_CONSUMER_MAX_RETRIES:2}
   cache:
     # 이슈 #57: 공연 상세는 오픈 전후로 거의 안 바뀌어 TTL을 길게(15분) 가져가 캐시 히트율을 우선하고,
     # 수정/삭제는 PerformanceService가 evictDetail로 즉시 무효화해 최신성을 보완한다.
