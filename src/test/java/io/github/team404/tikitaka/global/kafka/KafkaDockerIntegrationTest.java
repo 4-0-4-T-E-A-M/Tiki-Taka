@@ -26,7 +26,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
         "spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer",
 
         "spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer",
-        "spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer",
+        "spring.kafka.consumer.value-deserializer="
+                + "org.springframework.kafka.support.serializer.ErrorHandlingDeserializer",
+        "spring.kafka.consumer.properties.spring.deserializer.value.delegate.class="
+                + "org.springframework.kafka.support.serializer.JsonDeserializer",
 
         "spring.kafka.consumer.properties.spring.json.trusted.packages="
                 + "io.github.team404.tikitaka.global.kafka.event",
