@@ -111,6 +111,50 @@ class WaitingQueueRepositoryIT {
         assertThat(waitingQueueRepository.admittedSize(scheduleId)).isZero();
     }
 
+    @Test
+    void admitUpToTarget은_목표_인원까지만_대기열_앞에서_통과시킨다() {
+        // given — 목표 2명, 대기 5명
+        long scheduleId = System.nanoTime();
+        waitingQueueRepository.initAdmitCount(scheduleId, 2);
+        for (long userId = 1; userId <= 5; userId++) {
+            waitingQueueRepository.addIfAbsent(scheduleId, userId);
+        }
+
+        // when
+        int admitted = waitingQueueRepository.admitUpToTarget(scheduleId);
+
+        // then
+        assertThat(admitted).isEqualTo(2);
+        assertThat(waitingQueueRepository.admittedSize(scheduleId)).isEqualTo(2L);
+        assertThat(waitingQueueRepository.size(scheduleId)).isEqualTo(3L);
+    }
+
+    @Test
+    void admitUpToTarget은_이미_목표를_채웠으면_더_통과시키지_않는다() {
+        // given
+        long scheduleId = System.nanoTime();
+        waitingQueueRepository.initAdmitCount(scheduleId, 1);
+        waitingQueueRepository.addIfAbsent(scheduleId, 1L);
+        waitingQueueRepository.admitUpToTarget(scheduleId);
+
+        // when — 같은 목표에 다시 호출(재시도를 흉내)
+        int admitted = waitingQueueRepository.admitUpToTarget(scheduleId);
+
+        // then
+        assertThat(admitted).isZero();
+        assertThat(waitingQueueRepository.admittedSize(scheduleId)).isEqualTo(1L);
+    }
+
+    @Test
+    void admitUpToTarget은_입장_허용_목표가_설정되지_않았으면_아무도_통과시키지_않는다() {
+        // given — 오픈 전: admit-count 키 없음
+        long scheduleId = System.nanoTime();
+        waitingQueueRepository.addIfAbsent(scheduleId, 1L);
+
+        // when & then
+        assertThat(waitingQueueRepository.admitUpToTarget(scheduleId)).isZero();
+    }
+
     @Import({RedisAutoConfiguration.class, WaitingQueueRepository.class})
     static class TestConfig {
     }

@@ -56,6 +56,34 @@ class PerformanceScheduleRepositoryTest {
         assertThat(result).extracting(PerformanceSchedule::getId).containsExactly(exact.getId());
     }
 
+    @Test
+    void openIfScheduled은_SCHEDULED_상태일_때만_전환하고_영향받은_행_수를_반환한다() {
+        // given
+        PerformanceSchedule schedule = save(now.minusMinutes(1), ScheduleStatus.SCHEDULED);
+
+        // when — 같은 행에 두 번 호출(동시 호출을 순차로 흉내)
+        int firstAffected = performanceScheduleRepository.openIfScheduled(schedule.getId());
+        int secondAffected = performanceScheduleRepository.openIfScheduled(schedule.getId());
+
+        // then — 최초 1건만 영향받고, 두번째 호출은 조건(status = SCHEDULED)이 더 이상 맞지 않아 0건
+        assertThat(firstAffected).isEqualTo(1);
+        assertThat(secondAffected).isZero();
+        assertThat(performanceScheduleRepository.findById(schedule.getId()).orElseThrow().getStatus())
+                .isEqualTo(ScheduleStatus.OPEN);
+    }
+
+    @Test
+    void openIfScheduled은_SCHEDULED가_아닌_회차에는_적용되지_않는다() {
+        // given
+        PerformanceSchedule alreadyOpen = save(now.minusMinutes(1), ScheduleStatus.OPEN);
+
+        // when
+        int affected = performanceScheduleRepository.openIfScheduled(alreadyOpen.getId());
+
+        // then
+        assertThat(affected).isZero();
+    }
+
     private PerformanceSchedule save(LocalDateTime openAt, ScheduleStatus status) {
         PerformanceSchedule schedule = PerformanceSchedule.builder()
                 .performanceId(1L)

@@ -111,45 +111,43 @@ class WaitingQueueServiceTest {
         assertThat(waitingQueueService.size(1L)).isZero();
     }
 
+    // 목표 조회·남은 자리 계산·통과 처리는 이제 WaitingQueueRepository.admitUpToTarget 안에서
+    // Redis Lua 스크립트로 원자 실행된다(#117) — 서비스는 그 결과를 그대로 반환할 뿐이라 각 단계를
+    // 따로 모킹하지 않는다. 그 원자성 자체(목표 초과 방지)는 WaitingQueueConcurrencyIT에서 검증한다.
     @Test
     void 입장_허용_목표가_설정되지_않았으면_아무도_통과시키지_않는다() {
         // given — 오픈 전: admit-count 키 없음 → 0
-        when(waitingQueueRepository.admitCount(1L)).thenReturn(0L);
+        when(waitingQueueRepository.admitUpToTarget(1L)).thenReturn(0);
 
         // when
         int admitted = waitingQueueService.admitDueUsers(1L);
 
         // then
         assertThat(admitted).isZero();
-        verify(waitingQueueRepository, never()).admitFront(1L, 0L);
     }
 
     @Test
     void 목표에_모자란_만큼만_대기열_앞에서_통과시킨다() {
-        // given — 목표 100명, 이미 30명 통과 → 70명분 통과 시도
-        when(waitingQueueRepository.admitCount(1L)).thenReturn(100L);
-        when(waitingQueueRepository.admittedSize(1L)).thenReturn(30L);
-        when(waitingQueueRepository.admitFront(1L, 70L)).thenReturn(70);
+        // given — 목표 100명, 이미 30명 통과 → 70명분 통과
+        when(waitingQueueRepository.admitUpToTarget(1L)).thenReturn(70);
 
         // when
         int admitted = waitingQueueService.admitDueUsers(1L);
 
         // then
         assertThat(admitted).isEqualTo(70);
-        verify(waitingQueueRepository).admitFront(1L, 70L);
+        verify(waitingQueueRepository).admitUpToTarget(1L);
     }
 
     @Test
     void 이미_목표만큼_통과했으면_더_통과시키지_않는다() {
         // given
-        when(waitingQueueRepository.admitCount(1L)).thenReturn(100L);
-        when(waitingQueueRepository.admittedSize(1L)).thenReturn(100L);
+        when(waitingQueueRepository.admitUpToTarget(1L)).thenReturn(0);
 
         // when
         int admitted = waitingQueueService.admitDueUsers(1L);
 
         // then
         assertThat(admitted).isZero();
-        verify(waitingQueueRepository, never()).admitFront(1L, 0L);
     }
 }
