@@ -16,6 +16,7 @@ import io.github.team404.tikitaka.performanceseat.repository.PerformanceReposito
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -23,6 +24,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.elasticsearch.client.elc.NativeQuery;
 import org.springframework.data.elasticsearch.core.ElasticsearchOperations;
 import org.springframework.data.elasticsearch.core.SearchHits;
 import org.springframework.data.elasticsearch.core.query.Query;
@@ -96,6 +98,22 @@ class PerformanceSearchServiceTest {
         assertThat(result.size()).isEqualTo(5);
         assertThat(result.totalElements()).isEqualTo(12);
         verify(performanceRepository).searchByKeyword("뮤지컬", PerformanceGenre.MUSICAL, PerformanceRegion.SEOUL, page2);
+    }
+
+    // #116 성능 개선: track_total_hits를 무제한 정확 집계 대신 상한을 둬서, 색인이 커져도
+    // ES가 전체 매치 수를 끝까지 세지 않도록 한다. 실제 ES 없이도 빌드된 NativeQuery에 그 설정이
+    // 반영됐는지로 검증한다(값 자체의 지연 감소 효과는 실측 필요 — docs/perf 참고).
+    @Test
+    void 검색_쿼리에_track_total_hits_상한이_설정된다() {
+        SearchHits<PerformanceDocument> hits = emptyHits();
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+        when(elasticsearchOperations.search(queryCaptor.capture(), eq(PerformanceDocument.class)))
+                .thenReturn(hits);
+
+        searchService.search("아이유", null, null, pageable);
+
+        NativeQuery executedQuery = (NativeQuery) queryCaptor.getValue();
+        assertThat(executedQuery.getTrackTotalHitsUpTo()).isEqualTo(10_000);
     }
 
     @SuppressWarnings("unchecked")
