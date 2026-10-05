@@ -68,19 +68,22 @@ class PerformanceScheduleOpenServiceTest {
         PerformanceSchedule schedule = scheduleWith(10L, ScheduleStatus.SCHEDULED);
         when(scheduleRepository.findAllByStatusAndOpenAtLessThanEqual(eq(ScheduleStatus.SCHEDULED), any(LocalDateTime.class)))
                 .thenReturn(List.of(schedule));
+        when(scheduleRepository.openIfScheduled(10L)).thenReturn(1);
 
         int opened = performanceScheduleOpenService.openDueSchedules();
 
         assertThat(opened).isEqualTo(1);
-        assertThat(schedule.getStatus()).isEqualTo(ScheduleStatus.OPEN);
         verify(waitingQueueRepository).initAdmitCount(10L, INITIAL_ADMIT_COUNT);
     }
 
+    // 조건부 UPDATE가 0건을 반환하는 경우 — 다른 스레드/인스턴스가 이미 같은 회차를 먼저 열었을 때를
+    // 포함한다(#117 동시성 테스트가 실제로 검증하는 케이스는 PerformanceScheduleOpenServiceConcurrencyIT).
     @Test
-    void 이미_OPEN인_회차가_섞여있으면_입장_허용_인원을_다시_초기화하지_않는다() {
-        PerformanceSchedule alreadyOpen = scheduleWith(10L, ScheduleStatus.OPEN);
+    void 조건부_UPDATE가_0건이면_이미_다른_곳에서_처리된_것으로_보고_입장_허용_인원을_초기화하지_않는다() {
+        PerformanceSchedule alreadyHandled = scheduleWith(10L, ScheduleStatus.SCHEDULED);
         when(scheduleRepository.findAllByStatusAndOpenAtLessThanEqual(eq(ScheduleStatus.SCHEDULED), any(LocalDateTime.class)))
-                .thenReturn(List.of(alreadyOpen));
+                .thenReturn(List.of(alreadyHandled));
+        when(scheduleRepository.openIfScheduled(10L)).thenReturn(0);
 
         int opened = performanceScheduleOpenService.openDueSchedules();
 

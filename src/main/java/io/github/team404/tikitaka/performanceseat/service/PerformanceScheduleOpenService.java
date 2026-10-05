@@ -37,7 +37,9 @@ public class PerformanceScheduleOpenService {
 
         int opened = 0;
         for (PerformanceSchedule schedule : due) {
-            if (schedule.open()) {
+            // 전환 성공 여부는 엔티티의 open()이 아니라 DB 조건부 UPDATE의 영향 행 수로 판단한다
+            // (다중 인스턴스 동시 실행 안전성, #117 — PerformanceScheduleRepository.openIfScheduled 참고).
+            if (scheduleRepository.openIfScheduled(schedule.getId()) == 1) {
                 waitingQueueRepository.initAdmitCount(schedule.getId(), initialAdmitCount);
                 opened++;
                 log.info("공연 회차 오픈: scheduleId={}, initialAdmitCount={}", schedule.getId(), initialAdmitCount);

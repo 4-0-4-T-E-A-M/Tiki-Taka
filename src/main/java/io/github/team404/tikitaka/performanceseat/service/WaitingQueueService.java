@@ -52,16 +52,11 @@ public class WaitingQueueService {
 
     // admit-count(누적 입장 허용 목표)에 아직 못 미친 만큼 대기열 앞에서 사용자를 통과시킨다. 통과시킨 수를 반환.
     // 7주차 ramp-up이 admit-count를 키우면 다음 주기에 자동으로 다음 배치가 통과된다.
+    // 목표 조회·남은 자리 계산·통과 처리는 WaitingQueueRepository.admitUpToTarget 안에서 Redis Lua
+    // 스크립트로 원자 실행된다 — 애플리케이션에서 세 번의 Redis 왕복으로 나눠 하면 다중 인스턴스 동시
+    // 호출 시 목표보다 많이 통과시키는 경쟁 조건이 생기기 때문(#117).
     public int admitDueUsers(Long scheduleId) {
-        long target = waitingQueueRepository.admitCount(scheduleId);
-        if (target <= 0) {
-            return 0;
-        }
-        long slots = target - waitingQueueRepository.admittedSize(scheduleId);
-        if (slots <= 0) {
-            return 0;
-        }
-        return waitingQueueRepository.admitFront(scheduleId, slots);
+        return waitingQueueRepository.admitUpToTarget(scheduleId);
     }
 
     private void validateSchedule(Long scheduleId) {
