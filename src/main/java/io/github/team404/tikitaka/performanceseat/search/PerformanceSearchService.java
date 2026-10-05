@@ -30,6 +30,13 @@ public class PerformanceSearchService {
 
     private static final Logger log = LoggerFactory.getLogger(PerformanceSearchService.class);
 
+    // ES가 "정확히 몇 건 일치하는지"를 끝까지 세지 않고 이 값 이상이면 멈추도록 하는 상한(#116 성능 개선).
+    // 공연 검색 결과가 이 수를 넘는 경우는 실질적으로 없지만(수동 등록 데이터), 색인이 커져도 전체
+    // 매치 수를 정확히 세는 비용이 응답시간에 영향을 주지 않도록 미리 걸어둔다 — totalElements는
+    // 그 이상일 때 "10000"으로 근사치가 되지만, 페이지네이션 UI에서 몇만 건째 페이지를 보는 사용자는
+    // 없으므로 감수할 수 있는 손실이다. 현재 데이터 규모에서는 효과가 측정되지 않는다(docs/perf 참고).
+    private static final int TRACK_TOTAL_HITS_UP_TO = 10_000;
+
     private final ElasticsearchOperations elasticsearchOperations;
     private final PerformanceRepository performanceRepository;
 
@@ -69,7 +76,8 @@ public class PerformanceSearchService {
 
         NativeQueryBuilder builder = NativeQuery.builder()
                 .withQuery(query)
-                .withPageable(pageable);
+                .withPageable(pageable)
+                .withTrackTotalHitsUpTo(TRACK_TOTAL_HITS_UP_TO);
         // 키워드가 없으면 관련도 점수가 무의미하므로 최신순으로 정렬해 QueryDSL 목록과 일관되게 한다.
         if (!StringUtils.hasText(keyword)) {
             builder.withSort(sort -> sort.field(f -> f.field("createdAt").order(SortOrder.Desc)));
