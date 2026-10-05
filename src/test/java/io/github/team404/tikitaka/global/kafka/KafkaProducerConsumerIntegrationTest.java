@@ -3,6 +3,7 @@ package io.github.team404.tikitaka.global.kafka;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
@@ -10,18 +11,29 @@ import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.global.kafka.consumer.KafkaEventConsumer;
 import io.github.team404.tikitaka.global.kafka.repository.ProcessedEventRepository;
 import io.github.team404.tikitaka.global.kafka.repository.ReservationStatisticsRepository;
+import io.github.team404.tikitaka.global.kafka.service.ReservationStatisticsService;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.producer.KafkaEventProducer;
 import io.github.team404.tikitaka.global.kafka.topic.KafkaTopics;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.util.UUID;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.kafka.test.context.EmbeddedKafka;
+import org.springframework.kafka.test.EmbeddedKafkaBroker;
+import org.springframework.kafka.test.utils.KafkaTestUtils;
+import org.springframework.dao.TransientDataAccessResourceException;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
@@ -29,7 +41,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
         "spring.kafka.producer.key-serializer=org.apache.kafka.common.serialization.StringSerializer",
         "spring.kafka.producer.value-serializer=org.springframework.kafka.support.serializer.JsonSerializer",
         "spring.kafka.consumer.key-deserializer=org.apache.kafka.common.serialization.StringDeserializer",
-        "spring.kafka.consumer.value-deserializer=org.springframework.kafka.support.serializer.JsonDeserializer",
+        "spring.kafka.consumer.value-deserializer="
+                + "org.springframework.kafka.support.serializer.ErrorHandlingDeserializer",
+        "spring.kafka.consumer.properties.spring.deserializer.value.delegate.class="
+                + "org.springframework.kafka.support.serializer.JsonDeserializer",
         "spring.kafka.consumer.properties.spring.json.trusted.packages="
                 + "io.github.team404.tikitaka.global.kafka.event",
         "spring.kafka.consumer.auto-offset-reset=earliest"
@@ -45,6 +60,9 @@ class KafkaProducerConsumerIntegrationTest {
     @Autowired
     private KafkaEventProducer kafkaEventProducer;
 
+    @Autowired
+    private EmbeddedKafkaBroker embeddedKafkaBroker;
+
     @MockitoSpyBean
     private KafkaEventConsumer kafkaEventConsumer;
 
@@ -53,6 +71,9 @@ class KafkaProducerConsumerIntegrationTest {
 
     @Autowired
     private ReservationStatisticsRepository reservationStatisticsRepository;
+
+    @MockitoSpyBean
+    private ReservationStatisticsService reservationStatisticsService;
 
     @BeforeEach
     void clearConsumerInvocations() {
@@ -156,6 +177,50 @@ class KafkaProducerConsumerIntegrationTest {
             assertThat(statistics.getFailedCount()).isEqualTo(1L);
             assertThat(statistics.getExpiredCount()).isEqualTo(1L);
             assertThat(statistics.getCanceledCount()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void 일시적인_통계_저장_실패는_retry_후_정상_처리된다() {
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000111");
+        ReservationEvent event = confirmedEvent(eventId, 111L);
+        AtomicInteger attempts = new AtomicInteger();
+        doAnswer(invocation -> {
+            if (attempts.incrementAndGet() == 1) {
+                throw new TransientDataAccessResourceException("temporary database failure");
+            }
+            return invocation.callRealMethod();
+        }).when(reservationStatisticsService).process(event);
+
+        kafkaEventProducer.send(event);
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(attempts.get()).isEqualTo(2);
+            assertThat(processedEventRepository.existsById(eventId)).isTrue();
+            assertThat(reservationStatisticsRepository.findById(111L).orElseThrow()
+                    .getConfirmedCount()).isEqualTo(1L);
+        });
+    }
+
+    @Test
+    void poison_pill_뒤에_정상_이벤트도_처리된다() throws Exception {
+        Map<String, Object> producerProperties = KafkaTestUtils.producerProps(embeddedKafkaBroker);
+        producerProperties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
+        producerProperties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class);
+        UUID eventId = UUID.fromString("00000000-0000-0000-0000-000000000112");
+        ReservationEvent event = confirmedEvent(eventId, 112L);
+
+        try (KafkaProducer<String, byte[]> producer = new KafkaProducer<>(producerProperties)) {
+            producer.send(new ProducerRecord<>(KafkaTopics.RESERVATION_EVENTS, "poison", "{invalid-json".getBytes()))
+                    .get();
+        }
+        kafkaEventProducer.send(event);
+
+        verify(kafkaEventConsumer, timeout(10_000)).consume(event);
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> {
+            assertThat(processedEventRepository.existsById(eventId)).isTrue();
+            assertThat(reservationStatisticsRepository.findById(112L).orElseThrow()
+                    .getConfirmedCount()).isEqualTo(1L);
         });
     }
 
