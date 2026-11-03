@@ -30,6 +30,7 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -46,6 +47,9 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 class ReservationApiIntegrationTest {
+
+    private static final long SCHEDULE_ID = 1L;
+    private static final int ADMITTED_USER_COUNT = 100;
 
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
@@ -78,12 +82,26 @@ class ReservationApiIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @BeforeEach
     @AfterEach
     void cleanUp() {
         reservationSeatRepository.deleteAll();
         reservationRepository.deleteAll();
         seatRepository.deleteAll();
+        redisTemplate.delete(admittedKey(SCHEDULE_ID));
+    }
+
+    // 예매 API는 대기열을 통과한 사용자만 받으므로(#105), 기존 시나리오의 사용자 1~100을 통과 상태로 둔다
+    @BeforeEach
+    void admitUsers() {
+        String[] userIds = new String[ADMITTED_USER_COUNT];
+        for (int i = 0; i < ADMITTED_USER_COUNT; i++) {
+            userIds[i] = String.valueOf(i + 1L);
+        }
+        redisTemplate.opsForSet().add(admittedKey(SCHEDULE_ID), userIds);
     }
 
     @Test
@@ -319,6 +337,28 @@ class ReservationApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         RLock lock = redissonClient.getLock("seat-lock:" + nonExistingSeatId);
         assertThat(lock.isLocked()).isFalse();
+    }
+
+    @Test
+    void 대기열을_통과하지_않은_사용자가_API를_호출하면_403이고_좌석은_그대로_AVAILABLE이다() throws Exception {
+        Seat seat = createAvailableSeat();
+        long notAdmittedUserId = ADMITTED_USER_COUNT + 1L;
+        ReservationCreateRequest request = createRequest(notAdmittedUserId, 1L, SCHEDULE_ID, seat.getId());
+
+        ResponseEntity<String> response = sendReservationRequest(request, createAccessToken(notAdmittedUserId));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        JsonNode error = objectMapper.readTree(response.getBody());
+        assertThat(error.path("code").asText()).isEqualTo("FORBIDDEN");
+        assertThat(error.path("message").asText()).isEqualTo("대기열을 통과한 사용자만 예매할 수 있습니다.");
+        assertThat(reservationRepository.count()).isZero();
+        assertThat(seatRepository.findById(seat.getId()).orElseThrow().getStatus())
+                .isEqualTo(SeatStatus.AVAILABLE);
+        assertThat(redissonClient.getLock("seat-lock:" + seat.getId()).isLocked()).isFalse();
+    }
+
+    private String admittedKey(long scheduleId) {
+        return "queue:schedule:%d:admitted".formatted(scheduleId);
     }
 
     private Seat createAvailableSeat() {

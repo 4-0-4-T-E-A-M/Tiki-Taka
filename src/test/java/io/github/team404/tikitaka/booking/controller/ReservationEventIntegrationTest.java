@@ -29,6 +29,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -67,6 +68,8 @@ import org.testcontainers.utility.DockerImageName;
 @DirtiesContext
 class ReservationEventIntegrationTest {
 
+    private static final String ADMITTED_KEY = "queue:schedule:1:admitted";
+
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379);
@@ -95,12 +98,22 @@ class ReservationEventIntegrationTest {
     @MockitoSpyBean
     private KafkaEventConsumer kafkaEventConsumer;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
     @BeforeEach
     @AfterEach
     void cleanUp() {
         reservationSeatRepository.deleteAll();
         reservationRepository.deleteAll();
         seatRepository.deleteAll();
+        redisTemplate.delete(ADMITTED_KEY);
+    }
+
+    // 예매 API는 대기열을 통과한 사용자만 받는다(#105) — 회차 1의 사용자 1을 통과 상태로 둔다
+    @BeforeEach
+    void admitUser() {
+        redisTemplate.opsForSet().add(ADMITTED_KEY, "1");
     }
 
     @Test

@@ -4,6 +4,7 @@ import io.github.team404.tikitaka.booking.entity.Reservation;
 import io.github.team404.tikitaka.booking.entity.ReservationStatus;
 import io.github.team404.tikitaka.booking.service.ReservationService;
 import io.github.team404.tikitaka.global.security.jwt.JwtAuthenticationFilter;
+import io.github.team404.tikitaka.performanceseat.service.WaitingQueueService;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -34,11 +36,15 @@ class ReservationControllerTest {
     private ReservationService reservationService;
 
     @MockitoBean
+    private WaitingQueueService waitingQueueService;
+
+    @MockitoBean
     private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Test
     void 예약을_생성하고_공통_성공_응답으로_반환한다() throws Exception {
         Reservation reservation = reservation(1L, 10L, 20L);
+        given(waitingQueueService.isAdmitted(20L, 10L)).willReturn(true);
         given(reservationService.createReservation(any())).willReturn(reservation);
 
         mockMvc.perform(post("/api/reservations")
@@ -52,6 +58,31 @@ class ReservationControllerTest {
                 .andExpect(jsonPath("$.data.scheduleId").value(20))
                 .andExpect(jsonPath("$.data.status").value("PENDING_PAYMENT"))
                 .andExpect(jsonPath("$.id").doesNotExist());
+    }
+
+    @Test
+    void 대기열을_통과하지_않은_사용자의_예약_생성은_403으로_거부된다() throws Exception {
+        given(waitingQueueService.isAdmitted(20L, 10L)).willReturn(false);
+
+        mockMvc.perform(post("/api/reservations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":10,\"simulationId\":30,\"scheduleId\":20,\"seatIds\":[100,101]}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+                .andExpect(jsonPath("$.message").value("대기열을 통과한 사용자만 예매할 수 있습니다."));
+
+        verify(reservationService, never()).createReservation(any());
+    }
+
+    @Test
+    void 회차나_사용자_정보가_없는_예약_생성은_400으로_거부된다() throws Exception {
+        mockMvc.perform(post("/api/reservations")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":10,\"simulationId\":30,\"seatIds\":[100]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("BAD_REQUEST"));
+
+        verify(reservationService, never()).createReservation(any());
     }
 
     @Test
