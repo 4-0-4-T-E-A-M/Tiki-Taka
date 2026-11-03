@@ -18,6 +18,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.kafka.KafkaException;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 
@@ -60,6 +61,19 @@ class KafkaEventProducerTest {
                 .thenReturn(CompletableFuture.failedFuture(new RuntimeException("broker down")));
 
         // when & then: 로그만 남기고 호출자에게는 예외가 전파되지 않아야 한다
+        assertThatCode(() -> producer.send(event)).doesNotThrowAnyException();
+    }
+
+    @Test
+    void send_호출_자체가_예외를_던져도_밖으로_전파하지_않는다() {
+        // given: 메타데이터 조회가 max.block.ms를 넘는 등 send()가 동기적으로 실패하는 상황(#115)
+        KafkaEventProducer producer = new KafkaEventProducer(kafkaTemplate);
+        ReservationEvent event = new ReservationEvent(
+                FAILURE_EVENT_ID, 1L, 10L, 100L, ReservationStatus.PENDING_PAYMENT, LocalDateTime.now());
+        when(kafkaTemplate.send(anyString(), anyString(), any(ReservationEvent.class)))
+                .thenThrow(new KafkaException("Topic not present in metadata after 2000 ms."));
+
+        // when & then
         assertThatCode(() -> producer.send(event)).doesNotThrowAnyException();
     }
 }
