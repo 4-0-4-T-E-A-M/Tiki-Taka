@@ -15,6 +15,7 @@ import io.github.team404.tikitaka.booking.repository.ReservationSeatRepository;
 import io.github.team404.tikitaka.global.kafka.consumer.KafkaEventConsumer;
 import io.github.team404.tikitaka.global.kafka.event.ReservationEvent;
 import io.github.team404.tikitaka.global.kafka.topic.KafkaTopics;
+import io.github.team404.tikitaka.global.response.BaseResponse;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.entity.SeatGrade;
@@ -29,6 +30,8 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -67,6 +70,8 @@ import org.testcontainers.utility.DockerImageName;
 @DirtiesContext
 class ReservationEventIntegrationTest {
 
+    private static final String ADMITTED_KEY = "queue:schedule:1:admitted";
+
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379);
@@ -95,12 +100,23 @@ class ReservationEventIntegrationTest {
     @MockitoSpyBean
     private KafkaEventConsumer kafkaEventConsumer;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    // 같은 클래스의 @BeforeEach 간 실행 순서는 보장되지 않으므로, 정리 후 seed를 한 메서드에서 순서대로 수행한다
     @BeforeEach
+    void setUp() {
+        cleanUp();
+        // 예매 API는 대기열을 통과한 사용자만 받는다(#105) — 회차 1의 사용자 1을 통과 상태로 둔다
+        redisTemplate.opsForSet().add(ADMITTED_KEY, "1");
+    }
+
     @AfterEach
     void cleanUp() {
         reservationSeatRepository.deleteAll();
         reservationRepository.deleteAll();
         seatRepository.deleteAll();
+        redisTemplate.delete(ADMITTED_KEY);
     }
 
     @Test
@@ -109,14 +125,15 @@ class ReservationEventIntegrationTest {
         long userId = 1L;
         long scheduleId = 1L;
 
-        ResponseEntity<ReservationResponse> response = restTemplate.exchange(
+        ResponseEntity<BaseResponse<ReservationResponse>> response = restTemplate.exchange(
                 "/api/reservations",
                 HttpMethod.POST,
                 new HttpEntity<>(createRequest(userId, scheduleId, seat.getId()), authHeaders(userId)),
-                ReservationResponse.class
+                new ParameterizedTypeReference<>() {
+                }
         );
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        Long reservationId = response.getBody().id();
+        Long reservationId = response.getBody().data().id();
 
         ArgumentCaptor<ReservationEvent> eventCaptor = ArgumentCaptor.forClass(ReservationEvent.class);
         verify(kafkaEventConsumer, timeout(10_000)).consume(eventCaptor.capture());

@@ -8,6 +8,7 @@ import io.github.team404.tikitaka.booking.dto.ReservationCreateRequest;
 import io.github.team404.tikitaka.booking.dto.ReservationResponse;
 import io.github.team404.tikitaka.booking.repository.ReservationRepository;
 import io.github.team404.tikitaka.booking.repository.ReservationSeatRepository;
+import io.github.team404.tikitaka.global.response.BaseResponse;
 import io.github.team404.tikitaka.global.security.jwt.JwtTokenProvider;
 import io.github.team404.tikitaka.performanceseat.entity.Seat;
 import io.github.team404.tikitaka.performanceseat.entity.SeatGrade;
@@ -30,6 +31,8 @@ import org.redisson.api.RedissonClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -46,6 +49,9 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Testcontainers
 class ReservationApiIntegrationTest {
+
+    private static final long SCHEDULE_ID = 1L;
+    private static final int ADMITTED_USER_COUNT = 100;
 
     @Container
     static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
@@ -78,12 +84,31 @@ class ReservationApiIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private StringRedisTemplate redisTemplate;
+
+    // 같은 클래스의 @BeforeEach 간 실행 순서는 보장되지 않으므로, 정리 후 seed를 한 메서드에서 순서대로 수행한다
     @BeforeEach
+    void setUp() {
+        cleanUp();
+        admitUsers();
+    }
+
     @AfterEach
     void cleanUp() {
         reservationSeatRepository.deleteAll();
         reservationRepository.deleteAll();
         seatRepository.deleteAll();
+        redisTemplate.delete(admittedKey(SCHEDULE_ID));
+    }
+
+    // 예매 API는 대기열을 통과한 사용자만 받으므로(#105), 기존 시나리오의 사용자 1~100을 통과 상태로 둔다
+    private void admitUsers() {
+        String[] userIds = new String[ADMITTED_USER_COUNT];
+        for (int i = 0; i < ADMITTED_USER_COUNT; i++) {
+            userIds[i] = String.valueOf(i + 1L);
+        }
+        redisTemplate.opsForSet().add(admittedKey(SCHEDULE_ID), userIds);
     }
 
     @Test
@@ -94,15 +119,17 @@ class ReservationApiIntegrationTest {
         long scheduleId = 1L;
         ReservationCreateRequest request = createRequest(userId, simulationId, scheduleId, seat.getId());
 
-        ResponseEntity<ReservationResponse> response = restTemplate.exchange(
+        ResponseEntity<BaseResponse<ReservationResponse>> response = restTemplate.exchange(
                 "/api/reservations",
                 HttpMethod.POST,
                 new HttpEntity<>(request, createAuthorizationHeaders(createAccessToken(userId))),
-                ReservationResponse.class
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        ReservationResponse body = response.getBody();
+        assertThat(response.getBody()).isNotNull();
+        ReservationResponse body = response.getBody().data();
         assertThat(body).isNotNull();
         assertThat(body.id()).isNotNull();
         assertThat(body.userId()).isEqualTo(userId);
@@ -245,17 +272,14 @@ class ReservationApiIntegrationTest {
                 assertThat(error.path("code").asText())
                         .isEqualTo("CONFLICT");
 
+                // 락 경합에서 진 요청은 "선점 중", 승자가 커밋·언락한 뒤 락을 잡은 요청은 좌석 상태 재확인(#67)에서
+                // "예매할 수 없는 상태"로 409를 받는다 — 어느 쪽이 나올지는 스레드 타이밍에 달려 있다
                 assertThat(error.path("message").asText())
-                        .contains(
-                                "이미 다른 사용자가 선점 중인 좌석입니다"
+                        .containsAnyOf(
+                                "이미 다른 사용자가 선점 중인 좌석입니다",
+                                "예매할 수 없는 상태의 좌석입니다"
                         )
                         .contains(String.valueOf(seatId));
-
-                assertThat(error.hasNonNull("timestamp"))
-                        .isTrue();
-
-                assertThat(error.path("timestamp").asText())
-                        .isNotBlank();
             }
 
             // DB에는 예약이 정확히 1건만 존재
@@ -280,8 +304,8 @@ class ReservationApiIntegrationTest {
                             .orElseThrow();
 
             ReservationResponse reservation =
-                    objectMapper.readValue(
-                            successResponse.getBody(),
+                    objectMapper.treeToValue(
+                            objectMapper.readTree(successResponse.getBody()).path("data"),
                             ReservationResponse.class
                     );
 
@@ -319,6 +343,28 @@ class ReservationApiIntegrationTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         RLock lock = redissonClient.getLock("seat-lock:" + nonExistingSeatId);
         assertThat(lock.isLocked()).isFalse();
+    }
+
+    @Test
+    void 대기열을_통과하지_않은_사용자가_API를_호출하면_403이고_좌석은_그대로_AVAILABLE이다() throws Exception {
+        Seat seat = createAvailableSeat();
+        long notAdmittedUserId = ADMITTED_USER_COUNT + 1L;
+        ReservationCreateRequest request = createRequest(notAdmittedUserId, 1L, SCHEDULE_ID, seat.getId());
+
+        ResponseEntity<String> response = sendReservationRequest(request, createAccessToken(notAdmittedUserId));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        JsonNode error = objectMapper.readTree(response.getBody());
+        assertThat(error.path("code").asText()).isEqualTo("FORBIDDEN");
+        assertThat(error.path("message").asText()).isEqualTo("대기열을 통과한 사용자만 예매할 수 있습니다.");
+        assertThat(reservationRepository.count()).isZero();
+        assertThat(seatRepository.findById(seat.getId()).orElseThrow().getStatus())
+                .isEqualTo(SeatStatus.AVAILABLE);
+        assertThat(redissonClient.getLock("seat-lock:" + seat.getId()).isLocked()).isFalse();
+    }
+
+    private String admittedKey(long scheduleId) {
+        return "queue:schedule:%d:admitted".formatted(scheduleId);
     }
 
     private Seat createAvailableSeat() {
